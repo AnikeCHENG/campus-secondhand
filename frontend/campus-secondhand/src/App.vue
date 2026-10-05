@@ -3,9 +3,13 @@ import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import WallpaperBackground from '@/components/WallpaperBackground.vue'
 import Snowfall from '@/components/Snowfall.vue'
+import { useMessageNotify } from '@/composables/useMessageNotify'
 
 const route = useRoute()
 const showWallpaper = computed(() => Boolean(route.meta?.requiresAuth) && !route.meta?.requiresAdmin)
+
+const { startNotify } = useMessageNotify()
+startNotify(10000)
 
 watch(
   showWallpaper,

@@ -31,3 +31,8 @@ build/
 
 ***REMOVED******REMOVED******REMOVED*** VS Code ***REMOVED******REMOVED******REMOVED***
 .vscode/
+
+***REMOVED******REMOVED******REMOVED*** 本地真实密钥（禁止提交） ***REMOVED******REMOVED******REMOVED***
+application-local.properties
+application-*.local.properties
+

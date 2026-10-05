@@ -27,7 +27,7 @@ async function request(path, options = {}) {
 
     return data
   } catch (e) {
-    const err = new Error('Network request failed')
+    const err = new Error(e.message || 'Network request failed')
     err.cause = e
     throw err
   }
@@ -37,8 +37,12 @@ export async function login({ username, password }) {
   return await request('/login', { method: 'POST', body: JSON.stringify({ username, password }) })
 }
 
-export async function register({ username, email, password, confirmPassword }) {
-  return await request('/register', { method: 'POST', body: JSON.stringify({ username, email, password, confirmPassword }) })
+export async function sendCode({ email }) {
+  return await request('/send-code', { method: 'POST', body: JSON.stringify({ email }) })
+}
+
+export async function register({ username, email, password, confirmPassword, code }) {
+  return await request('/register', { method: 'POST', body: JSON.stringify({ username, email, password, confirmPassword, code }) })
 }
 
 export async function forgotPassword({ email }) {
@@ -51,4 +55,4 @@ export async function logout() {
   return await request('/logout', { method: 'POST' })
 }
 
-export default { login, register, forgotPassword, logout }
+export default { login, register, sendCode, forgotPassword, logout }

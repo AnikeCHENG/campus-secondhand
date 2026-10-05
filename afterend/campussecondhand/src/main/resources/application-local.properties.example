@@ -1,0 +1,29 @@
+***REMOVED*** ============================================================
+***REMOVED*** 本地密钥参考模板（仅供参考，不会被 Spring 自动加载）
+***REMOVED*** 复制下面内容，在系统 / 终端里设置同名环境变量后再启动后端
+***REMOVED*** Windows PowerShell 示例：
+***REMOVED***   $env:DB_USERNAME="root"
+***REMOVED***   $env:DB_PASSWORD="你的数据库密码"
+***REMOVED***   $env:MAIL_USERNAME="你的QQ号@qq.com"
+***REMOVED***   $env:MAIL_PASSWORD="你的16位邮箱授权码"
+***REMOVED***   $env:JWT_SECRET="换成一串随机字符串"
+***REMOVED*** ============================================================
+
+***REMOVED*** ---- 数据库 ----
+DB_USERNAME=root
+DB_PASSWORD=
+
+***REMOVED*** ---- Redis ----
+***REMOVED*** REDIS_HOST=localhost
+***REMOVED*** REDIS_PORT=6379
+
+***REMOVED*** ---- 邮箱（必须是“授权码”，不是 QQ/163 登录密码）----
+***REMOVED*** QQ 邮箱：设置 → 账户 → 开启 SMTP 服务 → 生成授权码（16位字母）
+***REMOVED*** 163 邮箱：设置 → POP3/SMTP → 开启并设置授权码
+MAIL_HOST=smtp.qq.com
+MAIL_PORT=465
+MAIL_USERNAME=
+MAIL_PASSWORD=
+
+***REMOVED*** ---- JWT 密钥（建议换成长随机串）----
+JWT_SECRET=

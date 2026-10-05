@@ -22,6 +22,8 @@ public class UserDTO {
     @Size(min = 6, message = "确认密码长度不能少于6位")
     private String confirmPassword;
 
+    private String code;
+
     // getter and setter
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -34,4 +36,7 @@ public class UserDTO {
 
     public String getConfirmPassword() { return confirmPassword; }
     public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
 }

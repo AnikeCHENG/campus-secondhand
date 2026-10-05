@@ -43,6 +43,19 @@
             </span>
           </button>
 
+          <button class="icon-btn" type="button" :aria-label="soundEnabled ? '关闭提示音' : '开启提示音'" @click="toggleSound">
+            <svg v-if="soundEnabled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M11 5 6 9H2v6h4l5 4V5z" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M11 5 6 9H2v6h4l5 4V5z" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+          </button>
+
           <button class="icon-btn" type="button" aria-label="退出登录" @click="handleLogout">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -370,9 +383,11 @@ import { logout } from '../api/auth'
 import { getProductList } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
 import { useNotificationStore } from '../stores/notification'
+import { useMessageNotify } from '../composables/useMessageNotify'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
+const { soundEnabled, toggleSound } = useMessageNotify()
 
 const showSearch = ref(false)
 const searchKeyword = ref('')

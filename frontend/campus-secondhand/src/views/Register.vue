@@ -23,7 +23,22 @@
 
         <div class="field">
           <label class="field-label" for="reg-email">邮箱</label>
-          <input id="reg-email" v-model="form.email" class="input" type="email" placeholder="name@example.com" />
+          <div class="email-row">
+            <input id="reg-email" v-model="form.email" class="input" type="email" placeholder="name@example.com" />
+            <button
+              type="button"
+              class="btn btn-outline code-btn"
+              :disabled="sendingCode || countdown > 0"
+              @click="onSendCode"
+            >
+              {{ sendingCode ? '发送中…' : countdown > 0 ? `${countdown}s 后重发` : '获取验证码' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="reg-code">邮箱验证码</label>
+          <input id="reg-code" v-model="form.code" class="input" type="text" inputmode="numeric" maxlength="6" placeholder="6 位验证码" />
         </div>
 
         <div class="field">
@@ -90,7 +105,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import auth from '../api/auth'
@@ -101,8 +116,11 @@ const regForm = ref(null)
 const loading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+let countdownTimer = null
 
-const form = reactive({ username: '', email: '', password: '', confirm: '' })
+const form = reactive({ username: '', email: '', password: '', confirm: '', code: '' })
 
 const rules = {
   username: [
@@ -118,6 +136,7 @@ const rules = {
     { min: 6, max: 20, message: '密码长度6-20字符', trigger: 'blur' }
   ],
   confirm: [{ required: true, message: '请确认密码', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
 }
 
 const strengthScore = computed(() => {
@@ -151,11 +170,52 @@ const strengthText = computed(() => {
   }
 })
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function startCountdown(seconds = 60) {
+  countdown.value = seconds
+  clearInterval(countdownTimer)
+  countdownTimer = setInterval(() => {
+    countdown.value -= 1
+    if (countdown.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+  }, 1000)
+}
+
+async function onSendCode() {
+  if (sendingCode.value || countdown.value > 0) return
+  if (!emailRegex.test(form.email)) {
+    ElMessage.error('请输入正确的邮箱格式')
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    await auth.sendCode({ email: form.email })
+    ElMessage.success('验证码已发送')
+    startCountdown(60)
+  } catch (err) {
+    ElMessage.error(err.message || err.cause?.message || '验证码发送失败')
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+onUnmounted(() => {
+  clearInterval(countdownTimer)
+})
+
 function onRegister() {
   regForm.value.validate((valid) => {
     if (valid) {
       if (form.password !== form.confirm) {
         ElMessage.error('两次输入的密码不一致')
+        return
+      }
+      if (!form.code) {
+        ElMessage.error('请输入邮箱验证码')
         return
       }
       loading.value = true
@@ -164,7 +224,8 @@ function onRegister() {
           username: form.username,
           email: form.email,
           password: form.password,
-          confirmPassword: form.confirm
+          confirmPassword: form.confirm,
+          code: form.code
         })
         .then(() => {
           ElMessage.success({ message: '注册成功！', type: 'success', duration: 2000 })
@@ -225,6 +286,17 @@ function onRegister() {
 .auth-sub { margin-top: var(--space-1); font-size: var(--text-sm); color: var(--text-2); }
 
 .auth-form { margin-bottom: var(--space-6); }
+
+.email-row { display: flex; gap: var(--space-3); align-items: stretch; }
+.email-row .input { flex: 1; min-width: 0; }
+.code-btn {
+  flex-shrink: 0;
+  min-width: 118px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+.code-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .input-affix { position: relative; }
 .input-affix .input { padding-right: 44px; }

@@ -16,3 +16,8 @@ frontend/campus-secondhand/frontend.log
 ***REMOVED*** Env
 .env
 *.local
+
+***REMOVED*** 本地真实密钥（禁止提交，只提交 .example 模板）
+application-local.properties
+application-*.local.properties
+

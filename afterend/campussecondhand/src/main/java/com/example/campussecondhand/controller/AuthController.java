@@ -3,6 +3,7 @@ package com.example.campussecondhand.controller;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.dto.UserDTO;
 import com.example.campussecondhand.entity.User;
+import com.example.campussecondhand.service.EmailService;
 import com.example.campussecondhand.service.UserService;
 import com.example.campussecondhand.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private EmailService emailService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -69,10 +73,34 @@ public class AuthController {
 
 
 
+    // 发送邮箱验证码
+    @PostMapping("/send-code")
+    public ResponseEntity<ApiResponse<?>> sendCode(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.error(400, "邮箱不能为空"));
+        }
+        try {
+            emailService.sendCode(email);
+            return ResponseEntity.ok(ApiResponse.success("验证码已发送", null));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(429, e.getMessage()));
+        }
+    }
+
     // 注册
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<?>> register(@Valid @RequestBody UserDTO userDTO) {
         try {
+            if (userDTO.getCode() == null || userDTO.getCode().isBlank()) {
+                return ResponseEntity.ok(ApiResponse.error(400, "验证码不能为空"));
+            }
+            try {
+                emailService.verify(userDTO.getEmail(), userDTO.getCode());
+            } catch (Exception e) {
+                return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+            }
+
             if (userService.existsByUsername(userDTO.getUsername())) {
                 return ResponseEntity.ok(ApiResponse.error(70, "用户名已存在"));
             }
