@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: ***REMOVED***f5f5f5; }
+        .test-container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid ***REMOVED***ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: ***REMOVED***10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: ***REMOVED***059669; }
+        .result { margin-top: 20px; padding: 15px; background: ***REMOVED***f8f9fa; border-radius: 4px; white-space: pre-wrap; word-break: break-all; }
+        .success { background: ***REMOVED***d4edda; color: ***REMOVED***155724; }
+        .error { background: ***REMOVED***f8d7da; color: ***REMOVED***721c24; }
+        h1 { text-align: center; color: ***REMOVED***333; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 登录测试</h1>
+        <input type="text" id="username" placeholder="用户名" value="test">
+        <input type="password" id="password" placeholder="密码" value="test123">
+        <button onclick="testLogin()">测试登录</button>
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = '正在测试...\n';
+
+            try {
+                // 测试1: 直接访问后端
+                resultDiv.textContent += '测试1: 直接访问后端 API...\n';
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                resultDiv.textContent += `状态码: ${response.status}\n`;
+                resultDiv.textContent += `响应: ${JSON.stringify(data, null, 2)}\n\n`;
+
+                if (data.code === 200) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent += '✅ 登录成功！';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent += `❌ 登录失败: ${data.message || '未知错误'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent += `❌ 网络错误: ${error.message}\n\n可能的原因:\n1. 后端服务未启动\n2. CORS 跨域问题\n3. 网络连接问题`;
+            }
+        }
+    </script>
+</body>
+</html>

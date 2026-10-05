@@ -1,0 +1,18 @@
+***REMOVED*** Maven
+afterend/campussecondhand/target/
+afterend/campussecondhand/backend.log
+
+***REMOVED*** Node
+frontend/campus-secondhand/node_modules/
+frontend/campus-secondhand/dist/
+frontend/campus-secondhand/frontend.log
+
+***REMOVED*** IDE / tool
+.trae/
+.idea/
+.vscode/
+*.iml
+
+***REMOVED*** Env
+.env
+*.local

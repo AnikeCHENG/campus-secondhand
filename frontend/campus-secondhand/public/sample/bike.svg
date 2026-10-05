@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+  <rect width="100%" height="100%" fill="***REMOVED***fff" stroke="***REMOVED***e6f9f0"/>
+  <g transform="translate(20,20)">
+    <circle cx="60" cy="120" r="36" fill="***REMOVED***f3f9f7" stroke="***REMOVED***34d399"/>
+    <circle cx="200" cy="120" r="36" fill="***REMOVED***f3f9f7" stroke="***REMOVED***34d399"/>
+    <rect x="80" y="50" width="70" height="10" rx="4" fill="***REMOVED***34d399"/>
+  </g>
+  <text x="140" y="160" text-anchor="middle" font-size="14" fill="***REMOVED***0f172a">二手单车 · ¥220</text>
+</svg>
