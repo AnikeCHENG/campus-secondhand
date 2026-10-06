@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useUserStore } from '../stores/user'
 
 const routes = [
   {
@@ -126,20 +128,44 @@ const router = createRouter({
   routes,
 })
 
-// global auth guard
-router.beforeEach((to, from, next) => {
+// ============================================================================
+// 全局路由守卫
+//
+// 【重要】前端守卫仅用于体验优化与拦截误入，任何人都可以通过改 localStorage
+// 或直接调用接口绕过它——它不是安全边界。
+// 真实授权由后端 AdminAuthInterceptor 强制保证：
+// 所有 /api/admin/** 在进入 Controller 之前都会校验 JWT 中的 role，
+// 非管理员一律 403。因此即使前端被绕过，也拿不到任何管理数据。
+// ============================================================================
+router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.meta && to.meta.requiresAuth
   const requiresAdmin = to.meta && to.meta.requiresAdmin
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
-  
+
   if (requiresAuth && !token) {
     next({ path: '/login', query: { redirect: to.fullPath } })
-  } else if (requiresAdmin && user.role !== 1) {
-    next({ path: '/', query: { error: '权限不足' } })
-  } else {
-    next()
+    return
   }
+
+  if (requiresAdmin) {
+    const store = useUserStore()
+    // role 未从服务端确认过时，先查一次 /api/auth/me 并缓存，后续导航不再请求
+    if (!store.verified) {
+      const me = await store.fetchMe()
+      if (!me) {
+        // token 失效
+        next({ path: '/login', query: { redirect: to.fullPath } })
+        return
+      }
+    }
+    if (store.role !== 1) {
+      ElMessage.error('无权限：需要管理员身份')
+      next({ path: '/' })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

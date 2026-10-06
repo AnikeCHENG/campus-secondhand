@@ -540,6 +540,7 @@
 <script setup>
 import { ref, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logout } from '../api/auth'
 import { updateProfile, getProfile } from '../api/user'
@@ -548,6 +549,7 @@ import { getOrderList, confirmOrder, cancelOrder } from '../api/order'
 import { getFavoriteList, removeFavoriteById, getHistoryList, clearHistory } from '../api/favorites'
 
 const router = useRouter()
+const userStore = useUserStore()
 function go(path) { router.push(path) }
 
 const activeTab = ref('listings')
@@ -912,6 +914,8 @@ function formatDate(timestamp) {
 }
 
 async function handleLogout() {
+  // 先清身份缓存，再清 token
+  userStore.reset()
   try { 
     await logout() 
   } catch {

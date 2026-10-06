@@ -61,13 +61,76 @@
           <p class="stat-number">{{ messageCount }}</p>
         </div>
       </div>
+
+      <!-- 财务概览：呼应平台 0.3% 佣金设计 -->
+      <div class="admin-stats admin-stats--finance">
+        <div class="stat-card card">
+          <h3>累计成交额（GMV）</h3>
+          <p class="stat-number">¥{{ finance.totalGmv ?? '0.00' }}</p>
+          <span class="stat-hint">已支付且未取消的订单</span>
+        </div>
+        <div class="stat-card card stat-card--accent">
+          <h3>平台手续费累计</h3>
+          <p class="stat-number">¥{{ finance.totalServiceFee ?? '0.00' }}</p>
+          <span class="stat-hint">费率 {{ finance.serviceFeeRate || '0.3%' }}，实际综合 {{ finance.effectiveRate || '—' }}</span>
+        </div>
+        <div class="stat-card card">
+          <h3>卖家应收合计</h3>
+          <p class="stat-number">¥{{ finance.sellerIncomeTotal ?? '0.00' }}</p>
+          <span class="stat-hint">成交额扣除平台手续费</span>
+        </div>
+        <div class="stat-card card">
+          <h3>已支付订单</h3>
+          <p class="stat-number">{{ finance.paidOrderCount ?? 0 }}</p>
+          <span class="stat-hint">待支付与已取消不计入</span>
+        </div>
+      </div>
+
+      <!-- 数据大屏 -->
+      <div class="chart-grid">
+        <div class="card chart-card chart-card--wide">
+          <div class="chart-head">
+            <h3 class="section-title">近 30 天新增趋势</h3>
+            <p class="section-sub">用户 / 商品 / 订单每日增量</p>
+          </div>
+          <div ref="trendRef" class="chart-body"></div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3 class="section-title">商品分类热度</h3>
+            <p class="section-sub">按在架与已售出商品数量统计</p>
+          </div>
+          <div ref="categoryRef" class="chart-body"></div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3 class="section-title">近 6 个月手续费</h3>
+            <p class="section-sub">按支付时间归集</p>
+          </div>
+          <div ref="feeRef" class="chart-body"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import axios from 'axios'
+import * as echarts from 'echarts/core'
+import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import {
+  GridComponent, TooltipComponent, LegendComponent, TitleComponent
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([
+  LineChart, BarChart, PieChart,
+  GridComponent, TooltipComponent, LegendComponent, TitleComponent,
+  CanvasRenderer
+])
 
 const user = ref(JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}'))
 const userCount = ref(0)
@@ -75,12 +138,23 @@ const productCount = ref(0)
 const orderCount = ref(0)
 const messageCount = ref(0)
 
+const finance = ref({})
+
+const trendRef = ref(null)
+const categoryRef = ref(null)
+const feeRef = ref(null)
+let trendChart = null
+let categoryChart = null
+let feeChart = null
+
+const authHeaders = () => {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  return { headers: { Authorization: `Bearer ${token}` } }
+}
+
 const fetchStats = async () => {
   try {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    const statsResponse = await axios.get('/api/admin/stats', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const statsResponse = await axios.get('/api/admin/stats', authHeaders())
     if (statsResponse.data && statsResponse.data.data) {
       userCount.value = statsResponse.data.data.userCount || 0
       productCount.value = statsResponse.data.data.productCount || 0
@@ -92,7 +166,147 @@ const fetchStats = async () => {
   }
 }
 
-onMounted(fetchStats)
+const fetchFinance = async () => {
+  try {
+    const res = await axios.get('/api/admin/stats/finance', authHeaders())
+    if (res.data && res.data.code === 200) finance.value = res.data.data || {}
+  } catch (error) {
+    console.error('获取财务统计失败:', error)
+  }
+}
+
+// 配色沿用 theme.css 既有令牌，不引入新色系
+const COLORS = {
+  accent: '#0b6e54',
+  accentSoft: 'rgba(11,110,84,0.14)',
+  warning: '#b07d12',
+  info: '#2563eb',
+  text2: '#6b6b64',
+  text3: '#9a9a92',
+  border: '#e7e7e2'
+}
+const PIE_COLORS = ['#0b6e54', '#b07d12', '#2563eb', '#6b6b64', '#9a9a92', '#1f8a4c', '#c0392b', '#d8d8d2']
+
+const baseTooltip = {
+  trigger: 'axis',
+  axisPointer: { type: 'line' },
+  textStyle: { color: COLORS.text2, fontSize: 12 }
+}
+
+async function renderTrend() {
+  await nextTick()
+  if (!trendRef.value) return
+  let series = { userSeries: [], productSeries: [], orderSeries: [] }
+  try {
+    const res = await axios.get('/api/admin/stats/trend?days=30', authHeaders())
+    if (res.data && res.data.code === 200) series = res.data.data || series
+  } catch (error) {
+    console.error('获取趋势失败:', error)
+  }
+  const dates = (series.userSeries || []).map((d) => d.date.slice(5))
+  const pick = (key) => (series[key] || []).map((d) => d.count)
+
+  trendChart = echarts.init(trendRef.value)
+  trendChart.setOption({
+    tooltip: baseTooltip,
+    legend: { data: ['新增用户', '新增商品', '新增订单'], textStyle: { color: COLORS.text2 }, top: 0 },
+    grid: { left: 40, right: 16, top: 36, bottom: 28 },
+    xAxis: {
+      type: 'category', data: dates, boundaryGap: false,
+      axisLine: { lineStyle: { color: COLORS.border } },
+      axisLabel: { color: COLORS.text3, fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value', minInterval: 1,
+      axisLine: { show: false },
+      axisLabel: { color: COLORS.text3, fontSize: 11 },
+      splitLine: { lineStyle: { color: COLORS.border } }
+    },
+    series: [
+      { name: '新增用户', type: 'line', smooth: true, showSymbol: false, data: pick('userSeries'), lineStyle: { color: COLORS.accent, width: 2 }, itemStyle: { color: COLORS.accent }, areaStyle: { color: COLORS.accentSoft } },
+      { name: '新增商品', type: 'line', smooth: true, showSymbol: false, data: pick('productSeries'), lineStyle: { color: COLORS.warning, width: 2 }, itemStyle: { color: COLORS.warning } },
+      { name: '新增订单', type: 'line', smooth: true, showSymbol: false, data: pick('orderSeries'), lineStyle: { color: COLORS.info, width: 2 }, itemStyle: { color: COLORS.info } }
+    ]
+  })
+}
+
+async function renderCategory() {
+  await nextTick()
+  if (!categoryRef.value) return
+  let rows = []
+  try {
+    const res = await axios.get('/api/admin/stats/category', authHeaders())
+    if (res.data && res.data.code === 200) rows = res.data.data || []
+  } catch (error) {
+    console.error('获取分类热度失败:', error)
+  }
+  categoryChart = echarts.init(categoryRef.value)
+  categoryChart.setOption({
+    tooltip: { trigger: 'item', textStyle: { color: COLORS.text2, fontSize: 12 } },
+    legend: { orient: 'vertical', right: 0, top: 'center', textStyle: { color: COLORS.text2, fontSize: 12 } },
+    series: [{
+      type: 'pie',
+      radius: ['45%', '68%'],
+      center: ['38%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      data: rows.map((r) => ({ name: r.label || r.category, value: r.productCount || 0 })),
+      color: PIE_COLORS
+    }]
+  })
+}
+
+async function renderFee() {
+  await nextTick()
+  if (!feeRef.value) return
+  const months = (finance.value.monthlyTrend || [])
+  feeChart = echarts.init(feeRef.value)
+  feeChart.setOption({
+    tooltip: baseTooltip,
+    grid: { left: 52, right: 16, top: 20, bottom: 28 },
+    xAxis: {
+      type: 'category',
+      data: months.map((m) => m.month.slice(2)),
+      axisLine: { lineStyle: { color: COLORS.border } },
+      axisLabel: { color: COLORS.text3, fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisLabel: { color: COLORS.text3, fontSize: 11 },
+      splitLine: { lineStyle: { color: COLORS.border } }
+    },
+    series: [{
+      type: 'bar',
+      barMaxWidth: 28,
+      data: months.map((m) => Number(m.serviceFee || 0)),
+      itemStyle: { color: COLORS.accent, borderRadius: [4, 4, 0, 0] }
+    }]
+  })
+}
+
+function resizeCharts() {
+  trendChart?.resize()
+  categoryChart?.resize()
+  feeChart?.resize()
+}
+
+onMounted(async () => {
+  await fetchStats()
+  await fetchFinance()
+  await renderTrend()
+  await renderCategory()
+  await renderFee()
+  window.addEventListener('resize', resizeCharts)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resizeCharts)
+  trendChart?.dispose()
+  categoryChart?.dispose()
+  feeChart?.dispose()
+})
 </script>
 
 <style scoped>

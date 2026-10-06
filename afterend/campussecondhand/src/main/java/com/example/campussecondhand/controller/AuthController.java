@@ -2,6 +2,7 @@ package com.example.campussecondhand.controller;
 
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.dto.UserDTO;
+import com.example.campussecondhand.repository.UserRepository;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.service.EmailService;
 import com.example.campussecondhand.service.UserService;
@@ -24,6 +25,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private EmailService emailService;
@@ -126,6 +130,45 @@ public class AuthController {
         }
     }
 
+
+    /**
+     * 当前登录用户身份。
+     *
+     * <p>供前端路由守卫判定管理员身份使用。刻意设计得足够轻量：
+     * 只从 <b>JWT</b> 解析用户名与角色，不查询任何业务表、不做聚合运算——
+     * 否则每次进入后台路由都要跑一遍统计查询。</p>
+     *
+     * <p>注意：这里返回的 role 来自服务端签名的 JWT，前端无法伪造。
+     * 前端守卫本身只是体验优化（拦截误入），真实授权由
+     * {@code AdminAuthInterceptor} 对 {@code /api/admin/**} 强制拦截。</p>
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<?>> me(@RequestHeader("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.ok(ApiResponse.error(401, "未登录"));
+            }
+            String username = jwtUtil.getUsernameFromToken(authHeader.substring(7));
+            if (username == null) {
+                return ResponseEntity.ok(ApiResponse.error(401, "登录已过期，请重新登录"));
+            }
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.error(401, "用户不存在"));
+            }
+            User user = userOpt.get();
+            Map<String, Object> me = new HashMap<>();
+            me.put("id", user.getId());
+            me.put("username", user.getUsername());
+            me.put("role", user.getRole());
+            me.put("avatar", user.getAvatar());
+            me.put("status", user.getStatus());
+            return ResponseEntity.ok(ApiResponse.success("获取成功", me));
+        } catch (Exception e) {
+            log.warn("解析当前用户身份失败: {}", e.getMessage());
+            return ResponseEntity.ok(ApiResponse.error(401, "登录已过期，请重新登录"));
+        }
+    }
 
     // 忘记密码 - 发送重置邮件
     @PostMapping("/forgot-password")

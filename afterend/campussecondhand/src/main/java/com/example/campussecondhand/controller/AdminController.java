@@ -1,5 +1,7 @@
 package com.example.campussecondhand.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.campussecondhand.service.AdminStatsService;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.enums.ProductStatus;
@@ -26,6 +28,13 @@ import java.util.ArrayList;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = "*")
+/**
+ * 平台管理后台。
+ *
+ * <p>鉴权已上移至 {@code AdminAuthInterceptor}：所有 {@code /api/admin/**}
+ * 在进入本类之前就会校验 JWT 中的 role，非管理员直接返回 403。本类不再重复判断，
+ * 避免新增端点时漏写检查造成越权。</p>
+ */
 public class AdminController {
 
     @Autowired
@@ -46,18 +55,8 @@ public class AdminController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private boolean isAdmin(String authHeader) {
-        try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return false;
-            }
-            String token = authHeader.substring(7);
-            Integer role = jwtUtil.getRoleFromToken(token);
-            return role != null && role == 1;
-        } catch (Exception e) {
-            return false;
-        }
-    }
+    @Autowired
+    private AdminStatsService adminStatsService;
 
     // ==================== 用户管理 ====================
 
@@ -68,11 +67,7 @@ public class AdminController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        // 构建查询条件
+// 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
             wrapper.like("username", search).or().like("email", search);
@@ -104,11 +99,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> getUserDetail(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        User user = userRepository.selectById(id);
+User user = userRepository.selectById(id);
         if (user == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "用户不存在"));
         }
@@ -122,11 +113,7 @@ public class AdminController {
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Integer status) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        User user = userRepository.selectById(id);
+User user = userRepository.selectById(id);
         if (user == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "用户不存在"));
         }
@@ -147,11 +134,7 @@ public class AdminController {
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        // 构建查询条件
+// 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Product> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
             wrapper.like("title", search).or().like("description", search);
@@ -189,11 +172,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> getProductDetail(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Product product = productRepository.selectById(id);
+Product product = productRepository.selectById(id);
         if (product == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
@@ -207,11 +186,7 @@ public class AdminController {
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Integer status) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Product product = productRepository.selectById(id);
+Product product = productRepository.selectById(id);
         if (product == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
@@ -233,11 +208,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> batchUpdateProductStatus(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, Object> params) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        List<?> rawIds = (List<?>) params.get("ids");
+List<?> rawIds = (List<?>) params.get("ids");
         Object rawStatus = params.get("status");
         if (rawIds == null || rawIds.isEmpty() || rawStatus == null) {
             return ResponseEntity.ok(ApiResponse.error(400, "参数错误"));
@@ -278,11 +249,7 @@ public class AdminController {
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        // 构建查询条件
+// 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (status != null) {
             wrapper.eq("status", status);
@@ -314,11 +281,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> getOrderDetail(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Order order = orderRepository.selectById(id);
+Order order = orderRepository.selectById(id);
         if (order == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "订单不存在"));
         }
@@ -332,11 +295,7 @@ public class AdminController {
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Map<String, String> params) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        String statusStr = params.get("status");
+String statusStr = params.get("status");
         if (statusStr == null || statusStr.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(400, "状态不能为空"));
         }
@@ -361,11 +320,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> deleteOrder(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Order order = orderRepository.selectById(id);
+Order order = orderRepository.selectById(id);
         if (order == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "订单不存在"));
         }
@@ -383,11 +338,7 @@ public class AdminController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        // 构建查询条件
+// 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Message> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
             wrapper.like("content", search);
@@ -422,11 +373,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> deleteMessage(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Message message = messageRepository.selectById(id);
+Message message = messageRepository.selectById(id);
         if (message == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "消息不存在"));
         }
@@ -441,11 +388,7 @@ public class AdminController {
     @GetMapping("/categories")
     public ResponseEntity<ApiResponse<?>> getAllCategories(
             @RequestHeader("Authorization") String authHeader) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        List<Category> categories = categoryRepository.selectList(null);
+List<Category> categories = categoryRepository.selectList(null);
         
         // 为每个分类添加商品数量
         List<Map<String, Object>> categoriesWithCount = new ArrayList<>();
@@ -471,11 +414,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> addCategory(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, String> params) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        String name = params.get("name");
+String name = params.get("name");
         if (name == null || name.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(400, "分类名称不能为空"));
         }
@@ -493,11 +432,7 @@ public class AdminController {
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Map<String, String> params) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        String name = params.get("name");
+String name = params.get("name");
         if (name == null || name.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(400, "分类名称不能为空"));
         }
@@ -518,11 +453,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> deleteCategory(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        Category category = categoryRepository.selectById(id);
+Category category = categoryRepository.selectById(id);
         if (category == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "分类不存在"));
         }
@@ -531,32 +462,60 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("删除成功", null));
     }
 
-    // ==================== 数据统计 ====================
+// ==================== 数据统计 ====================
 
-    // 获取平台统计数据
+    /**
+     * 平台概览。
+     *
+     * <p>原先用 {@code selectList(null).size()} 取计数——会把整表实体加载进内存
+     * 只为得到一个数字，数据量一大就是明显的性能反模式。改用 {@code selectCount}，
+     * 由数据库直接返回 COUNT。</p>
+     */
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<?>> getStats(
             @RequestHeader("Authorization") String authHeader) {
-        if (!isAdmin(authHeader)) {
-            return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
-        }
-
-        // 获取用户数量
-        int userCount = userRepository.selectList(null).size();
-        // 获取商品数量
-        int productCount = productRepository.selectList(null).size();
-        // 获取订单数量
-        int orderCount = orderRepository.selectList(null).size();
-        // 获取消息数量
-        int messageCount = messageRepository.selectList(null).size();
-
         Map<String, Object> stats = new HashMap<>();
-        stats.put("userCount", userCount);
-        stats.put("productCount", productCount);
-        stats.put("orderCount", orderCount);
-        stats.put("messageCount", messageCount);
+        stats.put("userCount", userRepository.selectCount(null));
+        stats.put("productCount", productRepository.selectCount(null));
+        stats.put("orderCount", orderRepository.selectCount(null));
+        stats.put("messageCount", messageRepository.selectCount(null));
+        // 在售与已售出分开计数，便于管理员判断平台供给结构
+        QueryWrapper<Product> onSale = new QueryWrapper<>();
+        onSale.eq("status", ProductStatus.ON_SALE.getCode());
+        stats.put("onSaleProductCount", productRepository.selectCount(onSale));
+        QueryWrapper<Product> sold = new QueryWrapper<>();
+        sold.eq("status", ProductStatus.SOLD.getCode());
+        stats.put("soldProductCount", productRepository.selectCount(sold));
 
         return ResponseEntity.ok(ApiResponse.success("获取成功", stats));
+    }
+
+    /**
+     * 财务统计：累计成交额、平台手续费总额、卖家应收合计、近 6 个月趋势。
+     *
+     * <p>手续费口径见 {@link com.example.campussecondhand.service.AdminStatsService}：
+     * 仅统计已支付且未取消的订单。</p>
+     */
+    @GetMapping("/stats/finance")
+    public ResponseEntity<ApiResponse<?>> getFinance(
+            @RequestHeader("Authorization") String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success("获取成功", adminStatsService.finance()));
+    }
+
+    /** 近 N 天每日新增用户/商品/订单趋势，默认 30 天 */
+    @GetMapping("/stats/trend")
+    public ResponseEntity<ApiResponse<?>> getTrend(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(defaultValue = "30") Integer days) {
+        int d = (days == null || days < 1) ? 30 : Math.min(days, 365);
+        return ResponseEntity.ok(ApiResponse.success("获取成功", adminStatsService.dailyTrend(d)));
+    }
+
+    /** 商品分类交易热度（饼图数据源） */
+    @GetMapping("/stats/category")
+    public ResponseEntity<ApiResponse<?>> getCategoryHeat(
+            @RequestHeader("Authorization") String authHeader) {
+return ResponseEntity.ok(ApiResponse.success("获取成功", adminStatsService.categoryHeat()));
     }
 }
 

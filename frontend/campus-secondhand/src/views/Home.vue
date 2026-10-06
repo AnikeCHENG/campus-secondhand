@@ -383,10 +383,12 @@ import { logout } from '../api/auth'
 import { getProductList } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
 import { useNotificationStore } from '../stores/notification'
+import { useUserStore } from '../stores/user'
 import { useMessageNotify } from '../composables/useMessageNotify'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
+const userStore = useUserStore()
 const { soundEnabled, toggleSound } = useMessageNotify()
 
 const showSearch = ref(false)
@@ -573,6 +575,8 @@ async function handleLogout() {
   // 轮询由 App.vue 的 useMessageNotify 统一负责，登出后其 poll 因无 token
   // 自动跳过请求；这里只需清掉徽标
   notificationStore.resetUnreadCount()
+  // 清空身份缓存，避免上一位用户的 role 残留在内存里
+  userStore.reset()
   localStorage.removeItem('token')
   localStorage.removeItem('username')
   sessionStorage.removeItem('justLoggedIn')

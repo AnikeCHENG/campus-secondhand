@@ -87,11 +87,13 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '../stores/user'
 import auth from '../api/auth'
 import VideoBackground from '../components/VideoBackground.vue'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 const loginForm = ref(null)
 const loading = ref(false)
 const showPassword = ref(false)
@@ -131,6 +133,8 @@ function onSubmit() {
               sessionStorage.setItem('user', JSON.stringify(user))
               if (uid) sessionStorage.setItem('userId', uid)
             }
+            // 登录响应已由服务端认证，直接写入 store，守卫无需再请求 /api/auth/me
+            userStore.setFromLogin(user)
             ElMessage.success({ message: '登录成功，欢迎回来！', type: 'success', duration: 2000 })
             const redirect = route.query.redirect || '/'
             router.push(redirect)
