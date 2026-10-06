@@ -12,6 +12,7 @@ import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
 import com.example.campussecondhand.service.OrderFeeService;
 import com.example.campussecondhand.service.OrderService;
+import com.example.campussecondhand.service.PaymentService.PayResult;
 import com.example.campussecondhand.service.ProductService;
 import com.example.campussecondhand.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,7 +179,15 @@ public class OrderController {
         }
     }
 
-    /** 模拟支付：仅待支付且未过期的订单可支付 */
+    /**
+     * 模拟支付。
+     *
+     * <p>请求体：{@code {"pay_method": "余额|支付宝|微信"}}。
+     * 后端不做白名单校验，前端传什么就记什么，但不允许为空。</p>
+     *
+     * <p>支付渠道由 {@code PaymentService} 抽象，当前为本地 Mock 实现，
+     * 不对接任何真实支付网关。</p>
+     */
     @PostMapping("/{id}/pay")
     public ResponseEntity<ApiResponse<?>> payOrder(
             @RequestHeader("Authorization") String authHeader,
@@ -187,25 +197,23 @@ public class OrderController {
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        Order order = orderRepository.selectById(id);
-        if (order == null) {
+        if (orderRepository.selectById(id) == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "订单不存在"));
         }
-        // 仅买家可支付
-        if (!order.getBuyerId().equals(userOpt.get().getId())) {
-            return ResponseEntity.ok(ApiResponse.error(403, "只有买家可以支付该订单"));
+        String payMethod = body == null ? null : body.get("pay_method");
+
+        // 归属校验、过期检查、状态守卫均在服务层完成；
+        // 业务失败通过返回值表达而非抛异常，避免回滚掉「超时取消 + 商品释放」
+        PayResult result = orderService.payOrder(id, payMethod, userOpt.get().getId());
+        if (!result.isSuccess()) {
+            return ResponseEntity.ok(ApiResponse.error(result.getCode(), result.getMessage()));
         }
-        String method = body == null ? null : body.get("paymentMethod");
-        if (method == null || method.isBlank()) {
-            return ResponseEntity.ok(ApiResponse.error(400, "请选择支付方式"));
-        }
-        try {
-            Order paid = orderService.payOrder(id, method);
-            return ResponseEntity.ok(ApiResponse.success("支付成功",
-                    orderService.buildCashierView(paid)));
-        } catch (OrderService.OrderBusinessException e) {
-            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
-        }
+
+        Order paid = orderRepository.selectById(id);
+        Map<String, Object> data = new LinkedHashMap<>(orderService.buildCashierView(paid));
+        data.put("tradeNo", result.getTradeNo());
+        data.put("paymentChannel", orderService.getPaymentChannel());
+        return ResponseEntity.ok(ApiResponse.success(result.getMessage(), data));
     }
 
     /** 取消订单：商品恢复为在售 */

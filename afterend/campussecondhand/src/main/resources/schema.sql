@@ -131,4 +131,22 @@ INSERT INTO categories (name, description, sort_order, status) VALUES
 ('学习用品', '文具、学习工具', 7, 1),
 ('其他', '其他闲置物品', 8, 1);
 
+
+-- ============================================================
+-- 支付流水表
+-- amount 为买家实付（订单价 + 运费），不含卖家承担的服务费
+-- trade_no 唯一索引：同一渠道流水不允许重复入账
+-- ============================================================
+CREATE TABLE IF NOT EXISTS payment_record (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '流水ID',
+    order_id    BIGINT         NOT NULL                COMMENT '订单ID',
+    order_no    VARCHAR(50)    NOT NULL                COMMENT '订单编号(冗余便于对账)',
+    amount      DECIMAL(10, 2) NOT NULL                COMMENT '支付金额(买家实付,不含卖家承担的服务费)',
+    pay_method  VARCHAR(50)    NOT NULL                COMMENT '支付方式:余额/支付宝/微信',
+    trade_no    VARCHAR(100)   NOT NULL                COMMENT '渠道流水号',
+    create_time DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_trade_no (trade_no),
+    KEY idx_order_id (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付流水表';
 SELECT 'Schema created successfully!' AS message;

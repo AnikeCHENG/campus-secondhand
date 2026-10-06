@@ -4,8 +4,10 @@ import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.enums.OrderStatus;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.OrderRepository;
+import com.example.campussecondhand.repository.PaymentRecordRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
+import com.example.campussecondhand.service.impl.MockPaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +16,6 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.when;
  * 订单状态机测试，重点覆盖两条最容易出错的业务约束：
  * 1. 取消订单必须把商品恢复为在售（否则商品被永久锁定）
  * 2. 超时未支付的订单必须能被惰性取消
+ *
+ * <p>支付相关的用例见 {@link OrderPaymentTest}。</p>
  */
 class OrderServiceStateMachineTest {
 
@@ -40,8 +43,9 @@ class OrderServiceStateMachineTest {
         productRepository = mock(ProductRepository.class);
         userRepository = mock(UserRepository.class);
         productService = mock(ProductService.class);
-        orderService = new OrderService(orderRepository, productRepository, userRepository,
-                productService, new OrderFeeService(), new ResourcelessTransactionTemplate());
+        orderService = new OrderService(orderRepository, mock(PaymentRecordRepository.class),
+                productRepository, userRepository, productService, new OrderFeeService(),
+                new MockPaymentServiceImpl(), new ResourcelessTransactionTemplate(), 30);
     }
 
     private Order pendingOrder(LocalDateTime expireTime) {
@@ -57,31 +61,6 @@ class OrderServiceStateMachineTest {
         order.setCreatedTime(LocalDateTime.now());
         order.setExpireTime(expireTime);
         return order;
-    }
-
-    @Test
-    void pay_moves_pending_payment_to_pending_shipment() {
-        Order order = pendingOrder(LocalDateTime.now().plusMinutes(30));
-        when(orderRepository.selectById(1L)).thenReturn(order);
-
-        Order paid = orderService.payOrder(1L, "alipay");
-
-        assertThat(paid.getStatus()).isEqualTo(OrderStatus.PENDING_SHIPMENT.getCode());
-        assertThat(paid.getPaidTime()).isNotNull();
-        assertThat(paid.getTransactionId()).startsWith("SIM");
-        // 支付不释放商品
-        verify(productService, never()).markAsOnSale(anyLong());
-    }
-
-    @Test
-    void pay_rejects_already_paid_order() {
-        Order order = pendingOrder(LocalDateTime.now().plusMinutes(30));
-        order.setStatus(OrderStatus.PENDING_SHIPMENT.getCode());
-        when(orderRepository.selectById(1L)).thenReturn(order);
-
-        assertThatThrownBy(() -> orderService.payOrder(1L, "alipay"))
-                .isInstanceOf(OrderService.OrderBusinessException.class)
-                .hasMessageContaining("不允许支付");
     }
 
     @Test
@@ -107,19 +86,6 @@ class OrderServiceStateMachineTest {
                 .hasMessageContaining("不允许取消");
         // 已付款订单取消失败时绝不能释放商品，否则会出现「货已收钱但商品可再售」
         verify(productService, never()).markAsOnSale(anyLong());
-    }
-
-    @Test
-    void expired_pending_order_is_auto_cancelled_on_pay() {
-        Order order = pendingOrder(LocalDateTime.now().minusMinutes(1));
-        when(orderRepository.selectById(1L)).thenReturn(order);
-
-        assertThatThrownBy(() -> orderService.payOrder(1L, "alipay"))
-                .isInstanceOf(OrderService.OrderBusinessException.class)
-                .hasMessageContaining("超时");
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED.getCode());
-        verify(productService).markAsOnSale(100L);
     }
 
     @Test
@@ -203,5 +169,15 @@ class OrderServiceStateMachineTest {
         assertThatThrownBy(() -> orderService.createOrder(100L, 2L))
                 .isInstanceOf(OrderService.OrderBusinessException.class)
                 .hasMessageContaining("自己的商品");
+    }
+
+    @Test
+    void pay_timeout_is_configurable() {
+        // 验收测试会把配置改成 1 分钟以加速验证
+        OrderService oneMinute = new OrderService(orderRepository, mock(PaymentRecordRepository.class),
+                productRepository, userRepository, productService, new OrderFeeService(),
+                new MockPaymentServiceImpl(), new ResourcelessTransactionTemplate(), 1);
+        assertThat(oneMinute.getPayTimeoutMinutes()).isEqualTo(1);
+        assertThat(orderService.getPayTimeoutMinutes()).isEqualTo(30);
     }
 }

@@ -60,6 +60,10 @@
           资金由平台托管，确认收货后打给卖家。
         </p>
         <p class="state-order-no">订单编号 {{ order.orderNo }}</p>
+        <p v-if="tradeNo" class="state-trade-no">
+          支付流水号 <span class="mono">{{ tradeNo }}</span>
+          <span v-if="paymentChannel" class="state-channel">（{{ paymentChannel }} 渠道 · 模拟支付）</span>
+        </p>
         <div class="state-actions">
           <router-link to="/profile" class="btn btn-primary">查看订单</router-link>
           <button type="button" class="btn btn-outline" @click="goBack">继续逛逛</button>
@@ -287,6 +291,8 @@ const loadError = ref('')
 const paying = ref(false)
 const cancelling = ref(false)
 const paySuccess = ref(false)
+const tradeNo = ref('')
+const paymentChannel = ref('')
 const remain = ref(0)
 const method = ref('alipay')
 const imgBroken = ref(false)
@@ -384,6 +390,8 @@ async function onPay() {
   try {
     const res = await payOrder(order.value.id, method.value)
     order.value = res.data || order.value
+    tradeNo.value = res.data?.tradeNo || order.value.transactionId || ''
+    paymentChannel.value = res.data?.paymentChannel || ''
     clearInterval(timer)
     paySuccess.value = true
     ElMessage.success('支付成功')
@@ -761,6 +769,17 @@ onBeforeUnmount(() => clearInterval(timer))
 .state-desc { font-size: var(--text-sm); color: var(--text-2); max-width: 42ch; }
 .state-amount { font-family: var(--font-mono); color: var(--text); }
 .state-order-no { font-size: var(--text-xs); color: var(--text-3); font-family: var(--font-mono); }
+.state-trade-no {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.state-trade-no .mono { color: var(--text); }
+.state-channel { color: var(--text-3); }
 .state-actions { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
 
 /* ---------- 骨架屏 ---------- */

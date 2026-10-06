@@ -223,10 +223,11 @@ export async function getOrderDetail(orderId) {
 }
 
 // 模拟支付：仅待支付且未过期的订单可支付
-export async function payOrder(orderId, paymentMethod) {
+// 参数名与后端约定为 pay_method；后端不做白名单校验，传什么记什么
+export async function payOrder(orderId, payMethod) {
   return await request(`/orders/${orderId}/pay`, {
     method: 'POST',
-    body: JSON.stringify({ paymentMethod })
+    body: JSON.stringify({ pay_method: payMethod })
   })
 }
 

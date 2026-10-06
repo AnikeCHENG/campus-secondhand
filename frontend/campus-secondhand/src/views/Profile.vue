@@ -262,8 +262,9 @@
               <div class="order-price-section">
                 <div class="order-price">{{ order.price }}</div>
                 <div class="order-actions">
-                  <button v-if="order.status === 'pending'" class="order-btn primary" @click="confirmReceive(order)">确认收货</button>
-                  <button v-if="order.status === 'pending'" class="order-btn danger" @click="cancelOrderItem(order)">取消订单</button>
+                  <button v-if="order.statusCode === 0" class="order-btn primary" @click="goPay(order)">去支付</button>
+                  <button v-if="order.statusCode === 2" class="order-btn primary" @click="confirmReceive(order)">确认收货</button>
+                  <button v-if="order.statusCode === 0" class="order-btn danger" @click="cancelOrderItem(order)">取消订单</button>
                   <button class="order-btn secondary" @click="contactSeller(order)">联系卖家</button>
                 </div>
               </div>
@@ -682,11 +683,13 @@ async function loadOrders() {
     if (res.code === 200 && res.data) {
       myOrders.value = res.data.map(order => ({
         id: order.id,
+        // statusCode 保留后端原始数字状态，供按钮可见性判断；
+        // status 仅是 CSS 类名（pending/completed/cancelled），
+        // 0/1/2 三个状态共用 pending，用它判断会导致按钮出现在错误的阶段
+        statusCode: order.status,
         title: order.productTitle,
         price: `¥${order.price}`,
         image: order.productImage,
-        // 后端 orders.status 为 0-4 五态，此处必须完整映射，
-        // 否则 status=3 已完成会被误显示为「已取消」
         status: ORDER_STATUS_MAP[order.status]?.cls || 'cancelled',
         statusText: ORDER_STATUS_MAP[order.status]?.text || '未知状态',
         seller: order.sellerName,
@@ -800,12 +803,19 @@ function removeFavorite(item) {
   stats.value.favorites--
 }
 
+/** 待支付订单跳转收银台 */
+function goPay(order) {
+  router.push(`/payment/${order.id}`)
+}
+
 async function confirmReceive(order) {
   try {
     const res = await confirmOrder(order.id)
     if (res.code === 200) {
-      order.status = 'completed'
-      order.statusText = '已完成'
+      // 同时更新 statusCode，否则按钮可见性判断会停留在旧状态
+      order.statusCode = 3
+      order.status = ORDER_STATUS_MAP[3].cls
+      order.statusText = ORDER_STATUS_MAP[3].text
       alert('确认收货成功！')
     } else {
       alert(res.message || '确认收货失败')
@@ -821,8 +831,9 @@ async function cancelOrderItem(order) {
     try {
       const res = await cancelOrder(order.id)
       if (res.code === 200) {
-        order.status = 'cancelled'
-        order.statusText = '已取消'
+        order.statusCode = 4
+        order.status = ORDER_STATUS_MAP[4].cls
+        order.statusText = ORDER_STATUS_MAP[4].text
         alert('取消订单成功！')
       } else {
         alert(res.message || '取消订单失败')

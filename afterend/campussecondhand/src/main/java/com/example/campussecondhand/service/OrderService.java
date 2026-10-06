@@ -1,14 +1,20 @@
 package com.example.campussecondhand.service;
 
 import com.example.campussecondhand.entity.Order;
+import com.example.campussecondhand.entity.PaymentRecord;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.enums.OrderStatus;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.OrderRepository;
+import com.example.campussecondhand.repository.PaymentRecordRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
+import com.example.campussecondhand.service.PaymentService.PayResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -18,6 +24,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -35,32 +42,50 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class OrderService {
 
-    /** 支付有效期：30 分钟 */
-    public static final int PAYMENT_WINDOW_MINUTES = 30;
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private static final DateTimeFormatter ORDER_NO_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final OrderRepository orderRepository;
+    private final PaymentRecordRepository paymentRecordRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductService productService;
     private final OrderFeeService orderFeeService;
+    private final PaymentService paymentService;
     private final TransactionTemplate transactionTemplate;
+
+    /** 支付有效期（分钟）。收银台倒计时、支付校验、定时任务三处共用该口径。 */
+    private final int payTimeoutMinutes;
 
     @Autowired
     public OrderService(OrderRepository orderRepository,
+                        PaymentRecordRepository paymentRecordRepository,
                         ProductRepository productRepository,
                         UserRepository userRepository,
                         ProductService productService,
                         OrderFeeService orderFeeService,
-                        TransactionTemplate transactionTemplate) {
+                        PaymentService paymentService,
+                        TransactionTemplate transactionTemplate,
+                        @Value("${order.pay-timeout-minutes:30}") int payTimeoutMinutes) {
         this.orderRepository = orderRepository;
+        this.paymentRecordRepository = paymentRecordRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.productService = productService;
         this.orderFeeService = orderFeeService;
+        this.paymentService = paymentService;
         this.transactionTemplate = transactionTemplate;
+        this.payTimeoutMinutes = payTimeoutMinutes;
+    }
+
+    public int getPayTimeoutMinutes() {
+        return payTimeoutMinutes;
+    }
+
+    public String getPaymentChannel() {
+        return paymentService.channelName();
     }
 
     /**
@@ -122,7 +147,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
         order.setCreatedTime(now);
         order.setUpdatedTime(now);
-        order.setExpireTime(now.plusMinutes(PAYMENT_WINDOW_MINUTES));
+        order.setExpireTime(now.plusMinutes(payTimeoutMinutes));
 
         // 服务费由卖家承担：买家实付不含服务费
         BigDecimal price = nz(product.getPrice());
@@ -161,11 +186,22 @@ public class OrderService {
         if (!OrderStatus.isPendingPayment(order.getStatus()) || !isExpired(order)) {
             return false;
         }
+        doCancel(order);
+        return true;
+    }
+
+    /**
+     * 执行取消：改状态并把商品恢复为在售。
+     *
+     * <p>两步都必须做。只改订单状态会让商品永久停在「已售出」，
+     * 之后无人能再购买它。</p>
+     */
+    private void doCancel(Order order) {
+        LocalDateTime now = LocalDateTime.now();
         order.setStatus(OrderStatus.CANCELLED.getCode());
-        order.setUpdatedTime(LocalDateTime.now());
+        order.setUpdatedTime(now);
         orderRepository.updateById(order);
         productService.markAsOnSale(order.getProductId());
-        return true;
     }
 
     /** 判断订单是否已过支付截止时间；未设置 expire_time 的历史订单视为未过期 */
@@ -174,40 +210,82 @@ public class OrderService {
     }
 
     /**
-     * 模拟支付。仅待支付且未过期的订单可支付。
+     * 支付订单。全流程一个事务。
      *
-     * <p>不使用 {@code @Transactional}：过期取消与支付更新必须是两个独立事务。
-     * 若共用一个事务，随后的业务异常会把「取消订单 + 释放商品」一并回滚，
-     * 商品将被永久锁定。这里改用 {@link TransactionTemplate} 显式控制边界，
-     * 也避免了同类内部调用导致注解失效的问题。</p>
+     * <p><b>关键约束：业务失败一律通过返回值表达，绝不抛异常。</b>
+     * 「超时取消」分支会先执行取消（含释放商品）再返回失败对象；
+     * 若改为抛异常，异常将传播出事务边界导致整个事务回滚，
+     * 取消与商品释放全部失效，商品被永久锁死在「已售出」。</p>
+     *
+     * <p>支付渠道由 {@link PaymentService} 抽象，本方法不感知具体渠道；
+     * 渠道失败时直接返回其失败结果，不写入任何数据。</p>
+     *
+     * @param orderId   订单主键
+     * @param payMethod 支付方式，原样记录（余额/支付宝/微信，不做白名单校验）
+     * @param userId    当前登录用户，必须是买家
      */
-    public Order payOrder(Long orderId, String paymentMethod) {
+    @Transactional
+    public PayResult payOrder(Long orderId, String payMethod, Long userId) {
         Order order = requireOrder(orderId);
 
-        // 第一段事务：过期则取消并释放商品，独立提交
-        Boolean cancelled = transactionTemplate.execute(
-                status -> autoCancelIfExpired(order));
-        if (Boolean.TRUE.equals(cancelled)) {
-            throw new OrderBusinessException("订单已超时取消，请重新下单");
+        // 归属校验：只有买家可支付
+        if (order.getBuyerId() == null || !order.getBuyerId().equals(userId)) {
+            return PayResult.fail(403, "只有买家可以支付该订单");
+        }
+        if (payMethod == null || payMethod.isBlank()) {
+            return PayResult.fail("请选择支付方式");
         }
 
-        // 第二段事务：写入支付结果
-        return transactionTemplate.execute(status -> {
-            Order fresh = requireOrder(orderId);
-            if (!OrderStatus.isPendingPayment(fresh.getStatus())) {
-                throw new OrderBusinessException("当前订单状态（"
-                        + labelOf(fresh.getStatus()) + "）不允许支付");
+        // 过期检查：先走取消逻辑并释放商品，再返回失败（不可抛异常，见方法注释）
+        if (isExpired(order)) {
+            if (OrderStatus.isPendingPayment(order.getStatus())) {
+                doCancel(order);
             }
-            LocalDateTime now = LocalDateTime.now();
-            fresh.setStatus(OrderStatus.PENDING_SHIPMENT.getCode());
-            fresh.setPaymentMethod(paymentMethod);
-            fresh.setPaidTime(now);
-            fresh.setUpdatedTime(now);
-            fresh.setTransactionId("SIM" + now.format(ORDER_NO_FORMAT)
-                    + ThreadLocalRandom.current().nextInt(1000, 9999));
-            orderRepository.updateById(fresh);
-            return fresh;
-        });
+            log.info("订单支付超时已自动取消: orderNo={}", order.getOrderNo());
+            return PayResult.fail("订单已超时取消");
+        }
+
+        // 状态守卫：防止对同一订单重复支付
+        if (!OrderStatus.isPendingPayment(order.getStatus())) {
+            return PayResult.fail("当前订单状态不可支付");
+        }
+
+        // 委托支付渠道（Mock 实现永远成功）
+        PayResult channelResult = paymentService.pay(order, payMethod);
+        if (!channelResult.isSuccess()) {
+            return channelResult;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        order.setStatus(OrderStatus.PENDING_SHIPMENT.getCode());
+        order.setPaymentMethod(payMethod);
+        order.setPaidTime(now);
+        order.setUpdatedTime(now);
+        order.setTransactionId(channelResult.getTradeNo());
+        orderRepository.updateById(order);
+
+        // 落支付流水。amount 为买家实付（订单价 + 运费），不含卖家承担的服务费
+        paymentRecordRepository.insert(buildPaymentRecord(order, payMethod,
+                channelResult.getTradeNo(), now));
+
+        log.info("支付成功: orderNo={}, payMethod={}, tradeNo={}",
+                order.getOrderNo(), payMethod, channelResult.getTradeNo());
+        return PayResult.ok(channelResult.getTradeNo());
+    }
+
+    private PaymentRecord buildPaymentRecord(Order order, String payMethod,
+                                             String tradeNo, LocalDateTime now) {
+        BigDecimal amount = nz(order.getPrice())
+                .add(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
+                .setScale(2, RoundingMode.HALF_UP);
+        PaymentRecord record = new PaymentRecord();
+        record.setOrderId(order.getId());
+        record.setOrderNo(order.getOrderNo());
+        record.setAmount(amount);
+        record.setPayMethod(payMethod);
+        record.setTradeNo(tradeNo);
+        record.setCreateTime(now);
+        return record;
     }
 
     /**
@@ -221,12 +299,60 @@ public class OrderService {
             throw new OrderBusinessException("当前订单状态（"
                     + labelOf(order.getStatus()) + "）不允许取消");
         }
-        order.setStatus(OrderStatus.CANCELLED.getCode());
-        order.setUpdatedTime(LocalDateTime.now());
-        orderRepository.updateById(order);
-        // 关键：释放商品，否则该商品永远无法再次购买
-        productService.markAsOnSale(order.getProductId());
+        doCancel(order);
         return order;
+    }
+
+    /**
+     * 扫描并取消所有超时未支付的订单（供定时任务调用）。
+     *
+     * <p>逐单独立事务：单条订单失败（如下架商品已被删除）不应影响其余订单，
+     * 否则整批回滚会造成部分订单被重复扫描、迟迟无法释放。</p>
+     *
+     * <p>与 {@link ***REMOVED***autoCancelIfExpired} 是互补关系而非重复：
+     * 定时任务负责用户完全离开后的兜底释放（最长延迟一个扫描周期），
+     * 惰性检查负责扫描间隙内用户访问收银台时立即释放。两者同时存在，
+     * 商品被锁定的窗口时间才趋近于零。</p>
+     *
+     * @return 本次成功取消的订单数
+     */
+    public int cancelTimeoutOrdersBatch() {
+        LocalDateTime now = LocalDateTime.now();
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        wrapper.eq("status", OrderStatus.PENDING_PAYMENT.getCode())
+                .isNotNull("expire_time")
+                .lt("expire_time", now);
+        List<Order> expired = orderRepository.selectList(wrapper);
+        if (expired.isEmpty()) {
+            return 0;
+        }
+
+        int cancelled = 0;
+        for (Order order : expired) {
+            try {
+                final Long orderId = order.getId();
+                Boolean done = transactionTemplate.execute(status -> {
+                    Order fresh = orderRepository.selectById(orderId);
+                    // 事务内重新确认状态，避免与用户支付并发导致误取消已支付订单
+                    if (fresh == null || !OrderStatus.isPendingPayment(fresh.getStatus())
+                            || !isExpired(fresh)) {
+                        return false;
+                    }
+                    doCancel(fresh);
+                    return true;
+                });
+                if (Boolean.TRUE.equals(done)) {
+                    cancelled++;
+                }
+            } catch (Exception e) {
+                log.error("超时取消订单失败: orderId={}, 原因={}", order.getId(), e.getMessage(), e);
+            }
+        }
+        if (cancelled > 0) {
+            log.info("定时任务取消超时订单 {} 笔", cancelled);
+        }
+        return cancelled;
     }
 
     /** 组装收银台所需的全部交易要素 */
