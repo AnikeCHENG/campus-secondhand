@@ -147,6 +147,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getProductDetail } from '../api/product'
 import { getUserById } from '../api/user'
 import { createOrder } from '../api/order'
@@ -206,7 +207,7 @@ function contactSeller() {
 async function buyProduct() {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
   if (!token) {
-    alert('请先登录后再购买商品')
+    ElMessage.warning('请先登录后再购买商品')
     router.push({ path: '/login', query: { redirect: `/products/${product.value.id}` } })
     return
   }
@@ -214,14 +215,21 @@ async function buyProduct() {
   try {
     const res = await createOrder(product.value.id)
     if (res.code === 200) {
-      alert('购买成功！订单已创建')
-      router.push('/orders')
+      // 必须用后端返回的订单主键跳转收银台；
+      // 原先跳的 /orders 路由并不存在，且无兜底路由，导致渲染空白页
+      const orderId = res.data?.id
+      if (!orderId) {
+        ElMessage.error('订单创建成功但未返回订单号，请重试')
+        return
+      }
+      ElMessage.success('订单已创建，请在 30 分钟内完成支付')
+      router.push(`/payment/${orderId}`)
     } else {
-      alert(res.message || '购买失败，请重试')
+      ElMessage.error(res.message || '购买失败，请重试')
     }
   } catch (error) {
     console.error('创建订单错误:', error)
-    alert('购买失败，请检查网络连接或联系客服')
+    ElMessage.error(error?.cause?.message || error?.message || '购买失败，请检查网络连接')
   } finally {
     buying.value = false
   }

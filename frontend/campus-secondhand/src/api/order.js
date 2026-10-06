@@ -204,10 +204,10 @@ export async function cancelOrder(orderId) {
   })
 }
 
-// 创建订单
+// 创建订单（收银台入口）
 export async function createOrder(productId) {
   try {
-    return await request('/orders', {
+    return await request('/orders/create', {
       method: 'POST',
       body: JSON.stringify({ productId })
     })
@@ -215,4 +215,22 @@ export async function createOrder(productId) {
     console.error('创建订单失败:', error)
     throw error
   }
+}
+
+// 获取收银台详情（含商品快照、金额明细、卖家信息、剩余支付秒数）
+export async function getOrderDetail(orderId) {
+  return await request(`/orders/${orderId}`, { method: 'GET' })
+}
+
+// 模拟支付：仅待支付且未过期的订单可支付
+export async function payOrder(orderId, paymentMethod) {
+  return await request(`/orders/${orderId}/pay`, {
+    method: 'POST',
+    body: JSON.stringify({ paymentMethod })
+  })
+}
+
+// 取消订单（商品恢复在售）
+export async function cancelOrderById(orderId) {
+  return await request(`/orders/${orderId}/cancel`, { method: 'POST' })
 }

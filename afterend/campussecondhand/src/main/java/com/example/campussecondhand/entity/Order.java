@@ -24,11 +24,24 @@ public class Order {
     @TableField("product_id")
     private Long productId;
 
+    /** 商品标题快照，避免商品被改/删后订单信息失真 */
+    @TableField("order_title")
+    private String orderTitle;
+
+    /** 商品首图快照（base64 Data URL），取下单时 products.images 的第一张 */
+    @TableField("order_image")
+    private String orderImage;
+
     @TableField("price")
     private BigDecimal price;
 
+    /** 运费。校内自提免运费，当前恒为 0，保留字段以便扩展邮费规则 */
+    @TableField("shipping_fee")
+    private BigDecimal shippingFee;
+
+    /** 状态语义以 {@link com.example.campussecondhand.enums.OrderStatus} 枚举为准 */
     @TableField("status")
-    private Integer status; // 0: 待支付, 1: 已支付, 2: 已发货, 3: 已完成, 4: 已取消
+    private Integer status;
 
     @TableField("payment_method")
     private String paymentMethod;
@@ -44,6 +57,10 @@ public class Order {
 
     @TableField("paid_time")
     private LocalDateTime paidTime;
+
+    /** 支付截止时间（下单时间 + 30 分钟），过期后由惰性检查自动取消 */
+    @TableField("expire_time")
+    private LocalDateTime expireTime;
 
     @TableField("completed_time")
     private LocalDateTime completedTime;
@@ -79,6 +96,14 @@ public class Order {
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
+    public String getOrderTitle() { return orderTitle; }
+    public void setOrderTitle(String orderTitle) { this.orderTitle = orderTitle; }
+    public String getOrderImage() { return orderImage; }
+    public void setOrderImage(String orderImage) { this.orderImage = orderImage; }
+    public BigDecimal getShippingFee() { return shippingFee; }
+    public void setShippingFee(BigDecimal shippingFee) { this.shippingFee = shippingFee; }
+    public LocalDateTime getExpireTime() { return expireTime; }
+    public void setExpireTime(LocalDateTime expireTime) { this.expireTime = expireTime; }
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }

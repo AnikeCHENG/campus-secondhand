@@ -115,4 +115,25 @@ public class ProductService {
         }
         return false;
     }
+
+    /**
+     * 订单取消/超时后把商品恢复为在售。
+     *
+     * <p>同时清空 sold_time，否则商品虽回到在售状态却仍带着成交时间，
+     * 导致「在售商品却显示已售出时间」的数据不一致。</p>
+     *
+     * @param id 商品 ID
+     * @return 商品存在并已恢复时返回 true
+     */
+    public boolean markAsOnSale(Long id) {
+        Product product = productRepository.selectById(id);
+        if (product != null) {
+            product.setStatus(ProductStatus.ON_SALE.getCode());
+            product.setSoldTime(null);
+            product.setUpdatedTime(LocalDateTime.now());
+            productRepository.updateById(product);
+            return true;
+        }
+        return false;
+    }
 }

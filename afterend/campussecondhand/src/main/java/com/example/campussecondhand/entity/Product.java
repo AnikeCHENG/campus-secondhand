@@ -1,6 +1,7 @@
 package com.example.campussecondhand.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -54,7 +55,14 @@ public class Product {
     @TableField("updated_time")
     private LocalDateTime updatedTime;
 
-    @TableField("sold_time")
+    /**
+     * 成交时间。
+     *
+     * <p>MyBatis-Plus 默认忽略 null 字段（NOT_NULL 策略），订单取消时
+     * {@code setSoldTime(null)} 不会落库，会导致商品已恢复在售却仍残留成交时间。
+     * 因此这里必须显式改为 IGNORED，使 null 也能写入。</p>
+     */
+    @TableField(value = "sold_time", updateStrategy = FieldStrategy.IGNORED)
     private LocalDateTime soldTime;
 
     @TableField(exist = false)

@@ -6,10 +6,12 @@ import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.enums.ProductStatus;
+import com.example.campussecondhand.enums.OrderStatus;
 import com.example.campussecondhand.repository.OrderRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
 import com.example.campussecondhand.service.OrderFeeService;
+import com.example.campussecondhand.service.OrderService;
 import com.example.campussecondhand.service.ProductService;
 import com.example.campussecondhand.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,9 @@ public class OrderController {
     private OrderFeeService orderFeeService;
 
     @Autowired
+    private OrderService orderService;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     private Optional<User> getUserFromToken(String authHeader) {
@@ -73,7 +78,9 @@ public class OrderController {
         List<Map<String, Object>> orderList = new ArrayList<>();
         for (Order order : orders) {
             Map<String, Object> orderMap = new HashMap<>();
-            orderMap.put("id", order.getOrderNo());
+            // id 必须是订单主键：前端后续用它在 /api/orders/{id} 上做支付/取消/收货
+            orderMap.put("id", order.getId());
+            orderMap.put("orderNo", order.getOrderNo());
             orderMap.put("productId", order.getProductId());
             
             // 获取商品信息
@@ -141,11 +148,14 @@ public class OrderController {
         if (!order.getBuyerId().equals(userId) && !order.getSellerId().equals(userId)) {
             return ResponseEntity.ok(ApiResponse.error(403, "无权访问此订单"));
         }
-        return ResponseEntity.ok(ApiResponse.success("获取成功", order));
+        // 惰性过期：超时未支付的订单在此自动取消并释放商品
+        orderService.autoCancelIfExpired(order);
+        // 返回收银台所需的全部交易要素
+        return ResponseEntity.ok(ApiResponse.success("获取成功", orderService.buildCashierView(order)));
     }
 
-    @PostMapping
-    @org.springframework.transaction.annotation.Transactional
+    /** 创建订单（收银台入口） */
+    @PostMapping("/create")
     public ResponseEntity<ApiResponse<?>> createOrder(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, Long> request) {
@@ -153,55 +163,76 @@ public class OrderController {
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        
         Long productId = request.get("productId");
         if (productId == null) {
             return ResponseEntity.ok(ApiResponse.error(400, "商品ID不能为空"));
         }
-        
-        // 检查商品是否存在
-        Product product = productRepository.selectById(productId);
-        if (product == null) {
-            return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
+        try {
+            Order order = orderService.createOrder(productId, userOpt.get().getId());
+            // 返回订单 ID 与编号，前端据此跳转收银台
+            return ResponseEntity.ok(ApiResponse.success("创建成功",
+                    orderService.buildCashierView(order)));
+        } catch (OrderService.OrderBusinessException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
         }
-        // 仅 ON_SALE 状态允许下单
-        if (ProductStatus.isSold(product.getStatus())) {
-            return ResponseEntity.ok(ApiResponse.error(400, "商品已售出"));
+    }
+
+    /** 模拟支付：仅待支付且未过期的订单可支付 */
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<ApiResponse<?>> payOrder(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) {
+        Optional<User> userOpt = getUserFromToken(authHeader);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        if (ProductStatus.isOffShelf(product.getStatus())) {
-            return ResponseEntity.ok(ApiResponse.error(400, "商品已下架"));
+        Order order = orderRepository.selectById(id);
+        if (order == null) {
+            return ResponseEntity.ok(ApiResponse.error(404, "订单不存在"));
         }
-
-        // 获取买家ID
-        Long buyerId = userOpt.get().getId();
-
-        // 不能购买自己的商品
-        if (product.getUserId() != null && product.getUserId().equals(buyerId)) {
-            return ResponseEntity.ok(ApiResponse.error(400, "不能购买自己的商品"));
+        // 仅买家可支付
+        if (!order.getBuyerId().equals(userOpt.get().getId())) {
+            return ResponseEntity.ok(ApiResponse.error(403, "只有买家可以支付该订单"));
         }
+        String method = body == null ? null : body.get("paymentMethod");
+        if (method == null || method.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.error(400, "请选择支付方式"));
+        }
+        try {
+            Order paid = orderService.payOrder(id, method);
+            return ResponseEntity.ok(ApiResponse.success("支付成功",
+                    orderService.buildCashierView(paid)));
+        } catch (OrderService.OrderBusinessException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+        }
+    }
 
-        // 创建订单
-        Order order = new Order();
-        order.setOrderNo("ORD" + System.currentTimeMillis() + String.format("%04d", (int)(Math.random() * 10000)));
-        order.setProductId(productId);
-        order.setBuyerId(buyerId);
-        order.setSellerId(product.getUserId() != null ? product.getUserId() : buyerId);
-        order.setPrice(product.getPrice());
-        order.setStatus(0);
-        order.setCreatedTime(java.time.LocalDateTime.now());
-
-        User seller = userRepository.selectById(order.getSellerId());
-        boolean studentVerified = seller != null && seller.getIsStudentVerified() != null && seller.getIsStudentVerified() == 1;
-        java.math.BigDecimal fee = orderFeeService.calculateServiceFee(product.getPrice(), studentVerified);
-        order.setServiceFee(fee);
-        order.setSellerIncome(product.getPrice().subtract(fee).setScale(2, java.math.RoundingMode.HALF_UP));
-
-        orderRepository.insert(order);
-
-        // 订单创建成功后再标记商品售出
-        productService.markAsSold(productId);
-
-        return ResponseEntity.ok(ApiResponse.success("创建成功", order));
+    /** 取消订单：商品恢复为在售 */
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<?>> cancelOrder(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id) {
+        Optional<User> userOpt = getUserFromToken(authHeader);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
+        }
+        Order order = orderRepository.selectById(id);
+        if (order == null) {
+            return ResponseEntity.ok(ApiResponse.error(404, "订单不存在"));
+        }
+        Long userId = userOpt.get().getId();
+        // 买家可取消自己的待支付订单；卖家不能单方面取消（应走下架流程）
+        if (!order.getBuyerId().equals(userId)) {
+            return ResponseEntity.ok(ApiResponse.error(403, "只有买家可以取消该订单"));
+        }
+        try {
+            Order cancelled = orderService.cancelOrder(id);
+            return ResponseEntity.ok(ApiResponse.success("订单已取消，商品已恢复在售",
+                    orderService.buildCashierView(cancelled)));
+        } catch (OrderService.OrderBusinessException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
@@ -222,12 +253,18 @@ public class OrderController {
             return ResponseEntity.ok(ApiResponse.error(403, "无权操作此订单"));
         }
         
-        // 检查订单状态是否变更为已完成
-        if (order.getStatus() != null && order.getStatus() == 3 && existingOrder.getStatus() != 3) {
-            // 同步更新商品状态为已售出
-            Product product = productRepository.selectById(existingOrder.getProductId());
-            if (product != null) {
-                productService.markAsSold(product.getId());
+        // 检查订单状态变更为已完成 / 已取消，并同步商品状态
+        if (order.getStatus() != null && !order.getStatus().equals(existingOrder.getStatus())) {
+            OrderStatus target = OrderStatus.fromCode(order.getStatus());
+            if (target == null) {
+                return ResponseEntity.ok(ApiResponse.error(400, "非法的订单状态值"));
+            }
+            if (target == OrderStatus.COMPLETED) {
+                // 确认收货：商品保持已售出
+                productService.markAsSold(existingOrder.getProductId());
+            } else if (target == OrderStatus.CANCELLED) {
+                // 取消订单：必须释放商品，否则商品永远无法再次购买
+                productService.markAsOnSale(existingOrder.getProductId());
             }
         }
         

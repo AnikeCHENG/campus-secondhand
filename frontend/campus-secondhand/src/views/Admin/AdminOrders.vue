@@ -10,10 +10,12 @@
         class="search-input"
       />
       <select v-model="statusFilter" class="filter-select" @change="fetchOrders">
-        <option value="">所有状态</option>
-        <option value="PENDING">待处理</option>
-        <option value="COMPLETED">已完成</option>
-        <option value="CANCELLED">已取消</option>
+        <option value="">全部状态</option>
+        <option :value="0">待支付</option>
+        <option :value="1">待发货</option>
+        <option :value="2">待收货</option>
+        <option :value="3">已完成</option>
+        <option :value="4">已取消</option>
       </select>
       <button @click="fetchOrders" class="search-btn">搜索</button>
     </div>
@@ -32,15 +34,15 @@
         </div>
         <div class="order-actions">
           <button 
-            v-if="order.status === 'PENDING'" 
-            @click="updateOrderStatus(order.id, 'COMPLETED')"
+            v-if="order.status === 0" 
+            @click="updateOrderStatus(order.id, 3)"
             class="btn-primary"
           >
             标记为已完成
           </button>
           <button 
-            v-if="order.status === 'PENDING'" 
-            @click="updateOrderStatus(order.id, 'CANCELLED')"
+            v-if="order.status === 0" 
+            @click="updateOrderStatus(order.id, 4)"
             class="btn-secondary"
           >
             取消订单
@@ -104,10 +106,14 @@ const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
+// 后端 orders.status 为整数 0-4，此前误用字符串键导致状态标签空白、
+// 操作按钮永不显示、状态更新必然 400（Integer.parseInt('COMPLETED') 抛异常）
 const orderStatusMap = {
-  'PENDING': '待处理',
-  'COMPLETED': '已完成',
-  'CANCELLED': '已取消'
+  0: '待支付',
+  1: '待发货',
+  2: '待收货',
+  3: '已完成',
+  4: '已取消'
 }
 
 const totalPages = computed(() => {
@@ -123,7 +129,8 @@ const fetchOrders = async () => {
       },
       params: {
         search: searchQuery.value,
-        status: statusFilter.value,
+        // 后端签名是 Integer status，空串会导致 400 类型转换失败
+        ...(statusFilter.value !== '' && { status: Number(statusFilter.value) }),
         page: page.value,
         pageSize: pageSize.value
       }

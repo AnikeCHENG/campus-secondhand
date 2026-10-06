@@ -70,6 +70,18 @@ const routes = [
     component: () => import('../views/ProductDetail.vue'),
     meta: { requiresAuth: true }
   },
+  {
+    path: '/payment/:orderId',
+    name: 'Payment',
+    component: () => import('../views/Payment.vue'),
+    meta: { requiresAuth: true }
+  },
+  // 404 兜底：任何未匹配的路径都渲染提示页而不是空白页
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/NotFound.vue')
+  },
   // 管理员路由
   {
     path: '/admin',

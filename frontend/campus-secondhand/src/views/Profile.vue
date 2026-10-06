@@ -608,6 +608,18 @@ const myOrders = ref([])
 const browseHistory = ref([])
 const myDrafts = ref([])
 
+/**
+ * 订单状态映射（后端 orders.status 为 0-4 五态）。
+ * cls 复用既有 .order-status 的三个样式变体，避免新增 CSS。
+ */
+const ORDER_STATUS_MAP = {
+  0: { cls: 'pending', text: '待支付' },
+  1: { cls: 'pending', text: '待发货' },
+  2: { cls: 'pending', text: '待收货' },
+  3: { cls: 'completed', text: '已完成' },
+  4: { cls: 'cancelled', text: '已取消' }
+}
+
 async function loadUserProfile() {
   try {
     const res = await getProfile()
@@ -673,8 +685,10 @@ async function loadOrders() {
         title: order.productTitle,
         price: `¥${order.price}`,
         image: order.productImage,
-        status: order.status === 0 ? 'pending' : order.status === 1 ? 'completed' : 'cancelled',
-        statusText: order.status === 0 ? '待处理' : order.status === 1 ? '已完成' : '已取消',
+        // 后端 orders.status 为 0-4 五态，此处必须完整映射，
+        // 否则 status=3 已完成会被误显示为「已取消」
+        status: ORDER_STATUS_MAP[order.status]?.cls || 'cancelled',
+        statusText: ORDER_STATUS_MAP[order.status]?.text || '未知状态',
         seller: order.sellerName,
         date: new Date(order.createdAt).toLocaleString('zh-CN')
       }))
