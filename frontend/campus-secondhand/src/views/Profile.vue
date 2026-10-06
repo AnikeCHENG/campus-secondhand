@@ -274,7 +274,7 @@
                   <button v-if="order.statusCode === 0" class="order-btn primary" @click="goPay(order)">去支付</button>
                   <button v-if="order.statusCode === 2" class="order-btn primary" @click="confirmReceive(order)">确认收货</button>
                   <button v-if="order.statusCode === 0" class="order-btn danger" @click="cancelOrderItem(order)">取消订单</button>
-                  <button class="order-btn secondary" @click="contactSeller(order)">联系卖家</button>
+                  <button class="order-btn secondary" @click="contactSeller(order)">{{ order.isBuyer ? '联系卖家' : '联系买家' }}</button>
                 </div>
               </div>
             </div>
@@ -637,6 +637,30 @@ const browseHistory = ref([])
 const myDrafts = ref([])
 
 /**
+ * 当前登录用户 ID。
+ *
+ * 独立的 userId 键此前全项目从未写入，只能从 user JSON 里取；
+ * Login.vue 现已补写 userId，这里仍保留 JSON 兜底以兼容旧会话。
+ */
+function resolveCurrentUserId() {
+  for (const store of [localStorage, sessionStorage]) {
+    const direct = parseInt(store.getItem('userId') || '', 10)
+    if (Number.isFinite(direct) && direct > 0) return direct
+  }
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      const raw = store.getItem('user')
+      if (!raw) continue
+      const id = parseInt(JSON.parse(raw)?.id, 10)
+      if (Number.isFinite(id) && id > 0) return id
+    } catch { /* 忽略解析失败 */ }
+  }
+  return 0
+}
+
+const currentUserId = ref(resolveCurrentUserId())
+
+/**
  * 订单状态映射（后端 orders.status 为 0-4 五态）。
  * cls 复用既有 .order-status 的三个样式变体，避免新增 CSS。
  */
@@ -713,13 +737,19 @@ async function loadOrders() {
         // statusCode 保留后端原始数字状态，供按钮可见性判断；
         // status 仅是 CSS 类名（pending/completed/cancelled），
         // 0/1/2 三个状态共用 pending，用它判断会导致按钮出现在错误的阶段
-        statusCode: order.status,
+statusCode: order.status,
         title: order.productTitle,
         price: `¥${order.price}`,
         image: order.productImage,
         status: ORDER_STATUS_MAP[order.status]?.cls || 'cancelled',
         statusText: ORDER_STATUS_MAP[order.status]?.text || '未知状态',
         seller: order.sellerName,
+        // 保留买卖双方 ID：聊天页按 userId 开会话，缺了它就无从发起
+        sellerId: order.sellerId,
+        buyerId: order.buyerId,
+        productId: order.productId,
+        // 我是买家则联系卖家，我是卖家则联系买家
+        isBuyer: Number(order.buyerId) === Number(currentUserId.value),
         date: new Date(order.createdAt).toLocaleString('zh-CN')
       }))
       
@@ -983,8 +1013,24 @@ async function cancelOrderItem(order) {
   }
 }
 
+/**
+ * 联系订单对方。
+ *
+ * 此前只传了 `seller`（用户名），而聊天页读的是 `sellerId`，
+ * 收到 undefined → parseInt 得 NaN → 查找失败 → 静默无反应。
+ * 同时要区分买卖视角：买家联系卖家，卖家联系买家。
+ */
 function contactSeller(order) {
-  router.push(`/messages?seller=${order.seller}`)
+  const targetId = order.isBuyer ? order.sellerId : order.buyerId
+  const targetName = order.isBuyer ? order.seller : (order.buyerName || '买家')
+  if (!targetId) {
+    ElMessage.warning('无法获取对方信息')
+    return
+  }
+  router.push({
+    path: '/messages',
+    query: { sellerId: String(targetId), productId: String(order.productId ?? ''), seller: targetName }
+  })
 }
 
 const showEditModal = ref(false)

@@ -87,12 +87,36 @@
                 <div class="chat-avatar"><img :src="currentConversation?.avatar || defaultAvatar" :alt="currentConversation?.username" /></div>
                 <div class="chat-user-info">
                   <span class="chat-username">{{ currentConversation?.username }}</span>
-                  <span class="chat-status">在线</span>
+                  <span class="chat-status">{{ isNewChat ? '新会话' : '在线' }}</span>
                 </div>
               </div>
+              <button v-if="contextProduct" type="button" class="head-close" aria-label="关闭商品上下文" @click="contextProduct = null">×</button>
+            </div>
+
+            <!-- 商品上下文小卡片：让双方清楚在聊哪件商品 -->
+            <div v-if="contextProduct" class="ctx-card">
+              <div class="ctx-thumb">
+                <img v-if="contextProduct.images" :src="String(contextProduct.images).split(',')[0]" :alt="contextProduct.title" />
+                <span v-else class="ctx-thumb-fallback" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+                  </svg>
+                </span>
+              </div>
+              <div class="ctx-info">
+                <span class="ctx-label">正在咨询的商品</span>
+                <span class="ctx-title">{{ contextProduct.title }}</span>
+              </div>
+              <span class="ctx-price">¥{{ Number(contextProduct.price ?? 0).toFixed(2) }}</span>
             </div>
 
             <div class="chat-body" ref="messagesContainer">
+              <!-- 新会话且无任何消息时的引导 -->
+              <div v-if="isNewChat && currentMessages.length === 0" class="chat-intro">
+                <p class="chat-intro-title">你们还没聊过</p>
+                <p class="chat-intro-desc">发第一条消息开始沟通吧，问问商品细节、约个交易时间地点。</p>
+              </div>
               <div
                 v-for="(msg, index) in currentMessages"
                 :key="msg.id || index"
@@ -136,6 +160,9 @@ import {
   sendMessage as sendMessageApi,
   markAsRead
 } from '../api/message'
+import { getUserById } from '../api/user'
+import { getProductDetail } from '../api/product'
+import { ElMessage } from 'element-plus'
 import { useNotificationStore } from '../stores/notification'
 
 const router = useRouter()
@@ -149,11 +176,58 @@ const currentMessages = ref([])
 const newMessage = ref('')
 const unreadCount = ref(0)
 const messagesContainer = ref(null)
-const currentUserId = ref(parseInt(localStorage.getItem('userId') || '0'))
+/**
+ * 当前登录用户 ID。
+ *
+ * 注意：此前这里读 `localStorage.getItem('userId')`，但该键全项目从未被写入，
+ * 导致 currentUserId 恒为 0——自己发的消息被渲染成「收到」（左侧白气泡），
+ * 且每条消息都被误判为未读。改为从存储的 user JSON 解析。
+ */
+function resolveCurrentUserId() {
+  const direct = parseInt(localStorage.getItem('userId') || '', 10)
+  if (Number.isFinite(direct) && direct > 0) return direct
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      const raw = store.getItem('user')
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      const id = parseInt(parsed?.id, 10)
+      if (Number.isFinite(id) && id > 0) return id
+    } catch { /* 忽略解析失败 */ }
+  }
+  return 0
+}
+
+const currentUserId = ref(resolveCurrentUserId())
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%230b6e54'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%23ffffff'/%3E%3Cpath d='M8 36c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='%23ffffff'/%3E%3C/svg%3E"
 
-const currentConversation = computed(() => conversations.value.find(c => c.userId === selectedUserId.value))
+/**
+ * 当前会话对象。
+ *
+ * 新会话（对方从未发过消息）不在 conversations 列表里，
+ * 此处回落到 draftConversation，保证聊天区能渲染出昵称与头像。
+ */
+const draftConversation = ref(null)
+
+/** 商品上下文：从商品页/订单页跳转时带入 productId */
+const contextProduct = ref(null)
+const contextProductId = computed(() => {
+  const pid = route.query.productId
+  const n = parseInt(pid, 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+})
+
+const currentConversation = computed(() => {
+  if (!selectedUserId.value) return null
+  return conversations.value.find(c => c.userId === selectedUserId.value) || draftConversation.value
+})
+
+/** 是否为尚未产生过历史消息的新会话 */
+const isNewChat = computed(() =>
+  selectedUserId.value != null &&
+  !conversations.value.some(c => c.userId === selectedUserId.value)
+)
 
 function go(path) { router.push(path) }
 
@@ -184,8 +258,99 @@ async function fetchMessages() {
   }
 }
 
+/**
+ * 从查询参数打开与某个用户的会话。
+ *
+ * 此前只在 conversations 里 find，找不到就静默返回，
+ * 导致「从未聊过的人」根本无法开新会话——这正是私信发不出去的根因。
+ */
+async function openChatWith(userId, options = {}) {
+  const uid = parseInt(userId, 10)
+  if (!Number.isFinite(uid) || uid <= 0) return
+  if (uid === currentUserId.value) {
+    ElMessage.warning('不能和自己聊天')
+    return
+  }
+
+  selectedUserId.value = uid
+
+  const existing = conversations.value.find(c => c.userId === uid)
+  if (existing) {
+    draftConversation.value = null
+    await selectConversation(existing)
+  } else {
+    // 新会话：先按用户 ID 取昵称头像兜底，再拉历史（返回空数组属正常）
+    await loadDraftConversation(uid, options.username)
+    try {
+      const res = await getConversation(uid)
+      currentMessages.value = (res.code === 200 && res.data ? res.data : [])
+        .sort((a, b) => new Date(a.createdTime) - new Date(b.createdTime))
+    } catch (e) {
+      console.error('加载新会话历史失败:', e)
+      currentMessages.value = []
+    }
+    await nextTick()
+    scrollToBottom()
+  }
+
+  // 预填问候语，便于直接发送；用户可自由修改
+  if (options.productId || contextProductId.value) {
+    prefillGreeting()
+  }
+}
+
+/** 合成一个会话对象，供新会话时渲染头像昵称 */
+async function loadDraftConversation(uid, fallbackName) {
+  draftConversation.value = {
+    userId: uid,
+    username: fallbackName || '用户' + uid,
+    avatar: defaultAvatar,
+    lastMessage: '',
+    lastMessageTime: '',
+    unreadCount: 0,
+    messages: []
+  }
+  try {
+    const res = await getUserById(uid)
+    if (res.code === 200 && res.data) {
+      draftConversation.value = {
+        ...draftConversation.value,
+        username: res.data.username || draftConversation.value.username,
+        avatar: res.data.avatar || defaultAvatar
+      }
+    }
+  } catch (e) {
+    console.error('获取用户信息失败:', e)
+  }
+}
+
+/** 拉取跳转时携带的商品，用于顶部小卡片与问候语 */
+async function loadContextProduct() {
+  const pid = contextProductId.value
+  if (!pid) {
+    contextProduct.value = null
+    return
+  }
+  try {
+    const res = await getProductDetail(pid)
+    if (res.code === 200 && res.data) contextProduct.value = res.data
+  } catch (e) {
+    console.error('获取商品信息失败:', e)
+    contextProduct.value = null
+  }
+}
+
+/** 预填「你好，请问「商品标题」还在吗？」 */
+function prefillGreeting() {
+  const title = contextProduct.value?.title
+  newMessage.value = title
+    ? `你好，请问「${title}」还在吗？`
+    : '你好，在吗？'
+}
+
 async function selectConversation(conv) {
   selectedUserId.value = conv.userId
+  draftConversation.value = null
   try {
     const res = await getConversation(conv.userId)
     if (res.code === 200 && res.data) {
@@ -211,17 +376,38 @@ async function sendMessage() {
   const content = newMessage.value.trim()
   newMessage.value = ''
   try {
-    const res = await sendMessageApi({ receiverId: selectedUserId.value, content })
+    // 带上 productId，后端会把消息挂到商品上下文中
+    const res = await sendMessageApi({
+      receiverId: selectedUserId.value,
+      content,
+      productId: contextProductId.value
+    })
     if (res.code === 200) {
-      currentMessages.value.push({ id: res.data?.id || Date.now(), senderId: currentUserId.value, receiverId: selectedUserId.value, content, createdTime: new Date().toISOString(), isRead: 0 })
+      currentMessages.value.push({
+        id: res.data?.id || Date.now(),
+        senderId: currentUserId.value,
+        receiverId: selectedUserId.value,
+        content,
+        productId: contextProductId.value,
+        createdTime: new Date().toISOString(),
+        isRead: 0
+      })
+      // 新会话在列表中还不存在，首条消息发出后应立刻可见
+      if (isNewChat.value && draftConversation.value) {
+        conversations.value = [
+          { ...draftConversation.value, lastMessage: content, lastMessageTime: new Date().toISOString() },
+          ...conversations.value
+        ]
+        draftConversation.value = null
+      }
       await nextTick()
       scrollToBottom()
     } else {
-      alert(res.message || '发送失败')
+      ElMessage.error(res.message || '发送失败')
       newMessage.value = content
     }
   } catch (e) {
-    alert(e.message || '发送失败')
+    ElMessage.error(e?.cause?.message || e?.message || '发送失败')
     newMessage.value = content
   }
 }
@@ -251,10 +437,12 @@ watch(activeTab, () => { selectedUserId.value = null; currentMessages.value = []
 
 onMounted(async () => {
   await fetchMessages()
-  const sellerId = route.query.sellerId
+  const sellerId = route.query.sellerId || route.query.userId
   if (sellerId) {
-    const sellerConv = conversations.value.find(conv => conv.userId === parseInt(sellerId))
-    if (sellerConv) selectConversation(sellerConv)
+    // 关键修复：openChatWith 会处理「列表里没有该会话」的情况
+    await openChatWith(sellerId, { username: route.query.seller })
+  } else {
+    await loadContextProduct()
   }
 })
 </script>
@@ -339,4 +527,60 @@ onMounted(async () => {
   .msg-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
 }
-</style>
+
+/* ============ 商品上下文卡片 ============ */
+.ctx-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+}
+.ctx-thumb {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+}
+.ctx-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ctx-thumb-fallback { color: var(--text-3); }
+.ctx-thumb-fallback svg { width: 20px; height: 20px; }
+.ctx-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ctx-label { font-size: var(--text-xs); color: var(--accent); }
+.ctx-title {
+  font-size: var(--text-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctx-price { font-family: var(--font-mono); font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--text); flex-shrink: 0; }
+
+.head-close {
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.head-close:hover { color: var(--text); background: var(--surface-3); }
+
+/* 新会话引导 */
+.chat-intro {
+  margin: auto;
+  text-align: center;
+  color: var(--text-3);
+  padding: var(--space-8);
+}
+.chat-intro-title { font-size: var(--text-base); color: var(--text-2); margin-bottom: var(--space-2); }
+.chat-intro-desc { font-size: var(--text-sm); }</style>

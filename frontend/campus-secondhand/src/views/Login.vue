@@ -119,12 +119,17 @@ function onSubmit() {
           const token = res?.token
           const user = res?.user
           if (token && user) {
+            // 单独存一份 userId：部分页面（如 Messages.vue）需要直接取数值 ID，
+            // 每次解析 user JSON 既冗余又容易在解析失败时静默退化为 0
+            const uid = String(user.id ?? '')
             if (form.remember) {
               localStorage.setItem('token', token)
               localStorage.setItem('user', JSON.stringify(user))
+              if (uid) localStorage.setItem('userId', uid)
             } else {
               sessionStorage.setItem('token', token)
               sessionStorage.setItem('user', JSON.stringify(user))
+              if (uid) sessionStorage.setItem('userId', uid)
             }
             ElMessage.success({ message: '登录成功，欢迎回来！', type: 'success', duration: 2000 })
             const redirect = route.query.redirect || '/'

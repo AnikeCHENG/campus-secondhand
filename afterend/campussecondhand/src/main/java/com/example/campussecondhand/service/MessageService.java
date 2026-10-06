@@ -2,6 +2,7 @@ package com.example.campussecondhand.service;
 
 import com.example.campussecondhand.entity.Message;
 import com.example.campussecondhand.repository.MessageRepository;
+import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,9 @@ public class MessageService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     public List<Message> findByReceiverId(Long userId) {
         List<Message> messages = messageRepository.findByReceiverId(userId);
@@ -104,7 +108,47 @@ public class MessageService {
         return messageRepository.countUnread(userId);
     }
 
+    /** 单条消息内容长度上限 */
+    public static final int MAX_CONTENT_LENGTH = 1000;
+
+    /**
+     * 发送消息。
+     *
+     * <p>此前本方法不做任何校验：内容可为空、可超长、可以给自己发消息、
+     * 接收人不存在也照发入库，导致脏数据与前端莫名失败。此处集中兜住。</p>
+     *
+     * @throws IllegalArgumentException 校验不通过，调用方转为 400 业务响应
+     */
     public Message send(Message message) {
+        Long senderId = message.getSenderId();
+        Long receiverId = message.getReceiverId();
+
+        if (senderId == null || receiverId == null) {
+            throw new IllegalArgumentException("发送人或接收人为空");
+        }
+        if (senderId.equals(receiverId)) {
+            throw new IllegalArgumentException("不能给自己发消息");
+        }
+        if (userRepository.selectById(receiverId) == null) {
+            throw new IllegalArgumentException("接收用户不存在");
+        }
+
+        String content = message.getContent();
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("消息内容不能为空");
+        }
+        content = content.trim();
+        if (content.length() > MAX_CONTENT_LENGTH) {
+            throw new IllegalArgumentException("消息内容不能超过 " + MAX_CONTENT_LENGTH + " 个字符");
+        }
+
+        // 附带商品上下文时校验商品确实存在，避免挂到已删除商品上
+        if (message.getProductId() != null
+                && productRepository.selectById(message.getProductId()) == null) {
+            message.setProductId(null);
+        }
+
+        message.setContent(content);
         message.setCreatedTime(LocalDateTime.now());
         message.setIsRead(0);
         messageRepository.insert(message);

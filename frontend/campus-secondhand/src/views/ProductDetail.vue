@@ -115,11 +115,14 @@
                   已认证
                 </span>
               </div>
-              <button class="btn btn-outline" type="button" @click="contactSeller">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+<button class="btn btn-outline" type="button"
+                      :disabled="isOwnProduct"
+                      :title="isOwnProduct ? '这是你自己的商品' : '与卖家沟通'"
+                      @click="contactSeller">
+                <svg v-if="!isOwnProduct" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                联系卖家
+                {{ isOwnProduct ? '这是我的商品' : '联系卖家' }}
               </button>
             </div>
           </section>
@@ -249,11 +252,48 @@ async function fetchSellerInfo(userId) {
 function goBack() { router.back() }
 
 
+/** 商品是否属于当前登录用户（用于禁用「联系卖家」） */
+const isOwnProduct = computed(() => {
+  const owner = product.value?.userId
+  if (!owner) return false
+  const uid = resolveUserId()
+  return uid > 0 && Number(owner) === uid
+})
+
+/**
+ * 取当前登录用户 ID。
+ * 兼容两种存储：独立的 userId 键，或 user JSON 里的 id 字段。
+ */
+function resolveUserId() {
+  for (const store of [localStorage, sessionStorage]) {
+    const direct = parseInt(store.getItem('userId') || '', 10)
+    if (Number.isFinite(direct) && direct > 0) return direct
+  }
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      const raw = store.getItem('user')
+      if (!raw) continue
+      const id = parseInt(JSON.parse(raw)?.id, 10)
+      if (Number.isFinite(id) && id > 0) return id
+    } catch { /* 忽略 */ }
+  }
+  return 0
+}
+
 function contactSeller() {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (!token) { alert('请先登录后再联系卖家'); router.push('/login'); return }
-  if (!seller.value.username) { alert('获取卖家信息失败，请稍后重试'); return }
-  router.push({ path: '/messages', query: { seller: seller.value.username, sellerId: product.value.userId } })
+  if (!token) { ElMessage.warning('请先登录后再联系卖家'); router.push('/login'); return }
+  if (isOwnProduct.value) { ElMessage.info('这是你自己的商品'); return }
+  if (!seller.value.username) { ElMessage.error('获取卖家信息失败，请稍后再试'); return }
+  // 同时传 sellerId（聊天页按 ID 开会话）与 productId（带商品上下文）
+  router.push({
+    path: '/messages',
+    query: {
+      sellerId: String(product.value.userId),
+      productId: String(product.value.id),
+      seller: seller.value.username
+    }
+  })
 }
 
 async function buyProduct() {
