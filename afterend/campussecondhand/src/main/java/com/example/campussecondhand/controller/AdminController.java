@@ -2,6 +2,7 @@ package com.example.campussecondhand.controller;
 
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.User;
+import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Message;
@@ -214,7 +215,14 @@ public class AdminController {
         if (product == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
-        product.setStatus(status);
+
+        // 白名单校验：只接受 ProductStatus 中存在的取值
+        ProductStatus target = ProductStatus.fromCode(status);
+        if (target == null) {
+            return ResponseEntity.ok(ApiResponse.error(400, "非法的商品状态值"));
+        }
+
+        product.setStatus(target.getCode());
         productRepository.updateById(product);
 
         return ResponseEntity.ok(ApiResponse.success("更新成功", product));
@@ -241,12 +249,18 @@ public class AdminController {
             return ResponseEntity.ok(ApiResponse.error(400, "状态值必须是数字"));
         }
 
+        // 白名单校验：只接受 ProductStatus 中存在的取值
+        ProductStatus target = ProductStatus.fromCode(status);
+        if (target == null) {
+            return ResponseEntity.ok(ApiResponse.error(400, "非法的商品状态值"));
+        }
+
         int updatedCount = 0;
         for (Object rawId : rawIds) {
             Long id = Long.valueOf(rawId.toString());
             Product product = productRepository.selectById(id);
             if (product != null) {
-                product.setStatus(status);
+                product.setStatus(target.getCode());
                 productRepository.updateById(product);
                 updatedCount++;
             }

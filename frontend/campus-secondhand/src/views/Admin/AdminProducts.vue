@@ -254,18 +254,19 @@ const toggleProductStatus = async (productId, currentStatus) => {
   try {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     let newStatus
+    // 商品状态 0=下架 1=在售 2=已售出
     switch (currentStatus) {
-      case 0: // 在售 -> 已下架
-        newStatus = 2
+      case 0: // 下架 -> 上架
+        newStatus = 1
         break
-      case 1: // 已售出 -> 在售
+      case 1: // 在售 -> 下架
         newStatus = 0
         break
-      case 2: // 已下架 -> 在售
-        newStatus = 0
+      case 2: // 已售出 -> 上架
+        newStatus = 1
         break
       default:
-        newStatus = 0
+        newStatus = 1
     }
     const response = await axios.put(`/api/admin/products/${productId}/status`, newStatus, {
       headers: {
@@ -328,11 +329,11 @@ const changePage = (newPage) => {
 const getStatusText = (status) => {
   switch (status) {
     case 0:
-      return '在售'
-    case 1:
-      return '已售出'
-    case 2:
       return '已下架'
+    case 1:
+      return '在售'
+    case 2:
+      return '已售出'
     default:
       return '未知'
   }
@@ -341,11 +342,11 @@ const getStatusText = (status) => {
 const getStatusClass = (status) => {
   switch (status) {
     case 0:
-      return 'status-available'
-    case 1:
-      return 'status-sold'
-    case 2:
       return 'status-offline'
+    case 1:
+      return 'status-available'
+    case 2:
+      return 'status-sold'
     default:
       return ''
   }
@@ -354,11 +355,11 @@ const getStatusClass = (status) => {
 const getStatusAction = (status) => {
   switch (status) {
     case 0:
-      return '下架'
-    case 1:
-      return '重新上架'
-    case 2:
       return '上架'
+    case 1:
+      return '下架'
+    case 2:
+      return '重新上架'
     default:
       return '操作'
   }
@@ -367,11 +368,11 @@ const getStatusAction = (status) => {
 const getActionClass = (status) => {
   switch (status) {
     case 0:
-      return 'action下架'
+      return 'action-up'
     case 1:
-      return 'action上架'
+      return 'action-down'
     case 2:
-      return 'action上架'
+      return 'action-up'
     default:
       return ''
   }
@@ -870,7 +871,9 @@ onMounted(() => {
 .status-badge { padding: 3px 12px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: var(--weight-medium); text-transform: none; letter-spacing: 0; }
 .status-available { background: var(--accent-soft); color: var(--accent); }
 .status-sold { background: var(--info-soft); color: var(--info); }
-.status-offline { background: var(--surface-3); color: var(--text-2); }
+.status-offline { background: var(--warning-soft); color: var(--warning); }
+.action-up { color: var(--accent); }
+.action-down { color: var(--warning); }
 
 .action-button { padding: 5px 12px; border-radius: var(--radius-sm); font-size: var(--text-xs); font-weight: var(--weight-medium); text-transform: none; letter-spacing: 0; border: 1px solid transparent; background: var(--surface-3); color: var(--text); }
 .view-button { background: var(--surface-3); color: var(--text); }

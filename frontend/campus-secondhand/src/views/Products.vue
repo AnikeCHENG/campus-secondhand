@@ -411,8 +411,8 @@ function onCardLeave(event) {
   event.currentTarget.style.transform = ''
 }
 function formatPrice(price) { if (!price) return '0'; return parseFloat(price).toFixed(2) }
-function getStatusClass(status) { return ({ 0: 'badge-success', 1: 'badge-danger', 2: 'badge' })[status] || 'badge-success' }
-function getStatusText(status) { return ({ 0: '在售', 1: '已售', 2: '下架' })[status] || '在售' }
+function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
+function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
 async function handleLogout() {
   localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('justLoggedIn'); router.push('/login')
 }

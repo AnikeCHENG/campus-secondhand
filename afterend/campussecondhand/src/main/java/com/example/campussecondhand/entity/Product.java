@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.campussecondhand.enums.ProductStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -40,8 +41,12 @@ public class Product {
     @TableField("view_count")
     private Integer viewCount = 0;
 
+    /**
+     * 商品状态，取值语义见 {@link com.example.campussecondhand.enums.ProductStatus}。
+     * 禁止在业务代码中直接使用字面量 0/1/2，请统一引用该枚举。
+     */
     @TableField("status")
-    private Integer status = 0;
+    private Integer status = ProductStatus.ON_SALE.getCode();
 
     @TableField("created_time")
     private LocalDateTime createdTime;

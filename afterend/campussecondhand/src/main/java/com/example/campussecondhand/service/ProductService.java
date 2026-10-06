@@ -1,6 +1,7 @@
 package com.example.campussecondhand.service;
 
 import com.example.campussecondhand.entity.Product;
+import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class ProductService {
     private UserRepository userRepository;
 
     public List<Product> findAllAvailable() {
-        return productRepository.findAllAvailable();
+        return productRepository.findByStatus(ProductStatus.ON_SALE.getCode());
     }
 
     public List<Product> findByUserId(Long userId) {
@@ -32,11 +33,11 @@ public class ProductService {
     }
 
     public List<Product> findByCategory(String category) {
-        return productRepository.findByCategory(category);
+        return productRepository.findByCategoryAndStatus(category, ProductStatus.ON_SALE.getCode());
     }
 
     public List<Product> searchByKeyword(String keyword) {
-        return productRepository.searchByKeyword(keyword);
+        return productRepository.searchByKeywordAndStatus(keyword, ProductStatus.ON_SALE.getCode());
     }
 
     public Product findById(Long id) {
@@ -80,7 +81,8 @@ public class ProductService {
         product.setCreatedTime(LocalDateTime.now());
         product.setUpdatedTime(LocalDateTime.now());
         product.setViewCount(0);
-        product.setStatus(0);
+        // 新发布商品默认在售
+        product.setStatus(ProductStatus.ON_SALE.getCode());
         
         // 自动分类
         if (product.getCategory() == null || product.getCategory().isEmpty()) {
@@ -104,7 +106,8 @@ public class ProductService {
     public boolean markAsSold(Long id) {
         Product product = productRepository.selectById(id);
         if (product != null) {
-            product.setStatus(1);
+            // 成交后置为已售出
+            product.setStatus(ProductStatus.SOLD.getCode());
             product.setSoldTime(LocalDateTime.now());
             product.setUpdatedTime(LocalDateTime.now());
             productRepository.updateById(product);

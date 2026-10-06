@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS products (
     `condition` VARCHAR(20) DEFAULT NULL COMMENT '成色',
     images MEDIUMTEXT DEFAULT NULL COMMENT '图片(逗号分隔Base64或URL)',
     view_count INT DEFAULT 0 COMMENT '浏览量',
-    status INT DEFAULT 0 COMMENT '状态：0在售，1已售出，2下架',
+    status INT DEFAULT 1 COMMENT '商品状态：0下架，1在售，2已售出',
     created_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     sold_time DATETIME DEFAULT NULL COMMENT '售出时间',

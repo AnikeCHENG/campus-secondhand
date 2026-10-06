@@ -1,5 +1,6 @@
 package com.example.campussecondhand.service;
 
+import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.DashboardRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ public class DashboardService {
 
     public Map<String, Object> stats(Long userId) {
         Map<String, Object> result = new HashMap<>();
-        Map<String, Object> counts = dashboardRepository.stats(userId);
+        Map<String, Object> counts = dashboardRepository.stats(userId, ProductStatus.ON_SALE.getCode());
         if (counts != null) {
             result.put("sellingCount", toLong(counts.get("sellingCount")));
             result.put("pendingOrderCount", toLong(counts.get("pendingOrderCount")));

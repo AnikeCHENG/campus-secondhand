@@ -5,6 +5,7 @@ import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
+import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.OrderRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
@@ -163,8 +164,12 @@ public class OrderController {
         if (product == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
-        if (product.getStatus() != null && product.getStatus() == 1) {
+        // 仅 ON_SALE 状态允许下单
+        if (ProductStatus.isSold(product.getStatus())) {
             return ResponseEntity.ok(ApiResponse.error(400, "商品已售出"));
+        }
+        if (ProductStatus.isOffShelf(product.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.error(400, "商品已下架"));
         }
 
         // 获取买家ID

@@ -635,13 +635,14 @@ async function loadMyProducts() {
         title: p.title,
         price: `¥${p.price}`,
         image: p.images ? p.images.split(',')[0] : '/sample/phone.svg',
-        status: p.status === 0 ? 'selling' : 'sold',
-        statusText: p.status === 0 ? '在售' : '已售',
+        // 商品状态 0=下架 1=在售 2=已售出
+        status: p.status === 1 ? 'selling' : p.status === 2 ? 'sold' : 'offline',
+        statusText: p.status === 1 ? '在售' : p.status === 2 ? '已售' : '已下架',
         views: p.viewCount || 0
       }))
       
-      const listingsCount = products.filter(p => p.status === 0).length
-      const soldCount = products.filter(p => p.status === 1).length
+      const listingsCount = products.filter(p => p.status === 1).length
+      const soldCount = products.filter(p => p.status === 2).length
       const totalViews = products.reduce((sum, p) => sum + (p.viewCount || 0), 0)
       
       stats.value.listings = listingsCount
@@ -2488,6 +2489,7 @@ onMounted(() => {
 .listing-views, .favorite-meta, .order-meta, .order-id, .order-date, .history-time, .draft-date, .empty-state p { color: var(--text-2); }
 .listing-status.selling { background: var(--accent-soft); color: var(--accent); }
 .listing-status.sold { background: var(--surface-3); color: var(--text-2); }
+.listing-status.offline { background: var(--warning-soft); color: var(--warning); }
 .listing-btn.edit { background: var(--info-soft); color: var(--info); }
 .listing-btn.delete { background: var(--danger-soft); color: var(--danger); }
 .listing-btn:hover { transform: none; }

@@ -134,7 +134,7 @@
               </svg>
               {{ isFavorited ? '已收藏' : '收藏' }}
             </button>
-            <button v-if="product.status === 0" class="btn btn-primary" type="button" :disabled="buying" @click="buyProduct">
+            <button v-if="product.status === 1" class="btn btn-primary" type="button" :disabled="buying" @click="buyProduct">
               {{ buying ? '处理中…' : '立即购买' }}
             </button>
           </div>
@@ -251,8 +251,8 @@ function getConditionLabel(condition) {
   const conditions = { new: '全新', 'like-new': '几乎全新', good: '良好', fair: '一般' }
   return conditions[condition] || condition || '未标明'
 }
-function getStatusClass(status) { return ({ 0: 'badge-success', 1: 'badge-danger', 2: 'badge' })[status] || 'badge-success' }
-function getStatusText(status) { return ({ 0: '在售', 1: '已售', 2: '下架' })[status] || '在售' }
+function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
+function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
 
 async function handleLogout() {
   localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('justLoggedIn'); router.push('/login')

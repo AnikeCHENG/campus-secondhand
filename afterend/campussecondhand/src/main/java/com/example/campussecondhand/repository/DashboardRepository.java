@@ -10,14 +10,14 @@ import java.util.Map;
 public interface DashboardRepository {
     @Select("""
         SELECT
-          (SELECT COUNT(*) FROM products WHERE status = 1 AND user_id = ***REMOVED***{userId}) AS sellingCount,
+          (SELECT COUNT(*) FROM products WHERE status = ***REMOVED***{onSaleStatus} AND user_id = ***REMOVED***{userId}) AS sellingCount,
           (SELECT COUNT(*) FROM orders
             WHERE (buyer_id = ***REMOVED***{userId} OR seller_id = ***REMOVED***{userId})
               AND status IN (0,1,2)) AS pendingOrderCount,
           (SELECT COUNT(*) FROM messages
             WHERE receiver_id = ***REMOVED***{userId} AND is_read = 0) AS unreadMessageCount
         """)
-    Map<String, Object> stats(@Param("userId") Long userId);
+    Map<String, Object> stats(@Param("userId") Long userId, @Param("onSaleStatus") Integer onSaleStatus);
 
     @Select("""
         SELECT u.id AS id, u.username AS username, u.avatar AS avatar,
