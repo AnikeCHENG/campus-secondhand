@@ -1,6 +1,7 @@
 package com.example.campussecondhand.controller;
 
 import com.example.campussecondhand.common.ApiResponse;
+import com.example.campussecondhand.common.PageParam;
 import com.example.campussecondhand.entity.CommentRecord;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.repository.UserRepository;
@@ -52,8 +53,14 @@ public class ProductInteractionController {
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<ApiResponse<?>> comments(@PathVariable Long id, @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(ApiResponse.success("获取成功", postInteractionService.listComments(id, page, size)));
+    public ResponseEntity<ApiResponse<?>> comments(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        // 分页参数统一校验，越界返回 400
+        PageParam paging = PageParam.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                postInteractionService.listComments(id, paging.page(), paging.size())));
     }
 
     @PostMapping("/{id}/comment")

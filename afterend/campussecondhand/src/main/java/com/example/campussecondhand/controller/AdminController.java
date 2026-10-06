@@ -3,6 +3,7 @@ package com.example.campussecondhand.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.campussecondhand.service.AdminStatsService;
 import com.example.campussecondhand.common.ApiResponse;
+import com.example.campussecondhand.common.PageParam;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.entity.Product;
@@ -65,8 +66,11 @@ public class AdminController {
     public ResponseEntity<ApiResponse<?>> getAllUsers(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
+        PageParam paging = PageParam.of(page, pageSize);
+
 // 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
@@ -74,22 +78,22 @@ public class AdminController {
         }
 
         // 计算分页参数
-        int offset = (page - 1) * pageSize;
+        long offset = paging.offset();
 
         // 查询用户列表
         List<User> users = userRepository.selectList(wrapper.orderByDesc("created_time"));
         // 手动分页
         List<User> paginatedUsers = users.stream()
                 .skip(offset)
-                .limit(pageSize)
+                .limit(paging.size())
                 .collect(java.util.stream.Collectors.toList());
 
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("items", paginatedUsers);
         result.put("total", users.size());
-        result.put("page", page);
-        result.put("pageSize", pageSize);
+        result.put("page", paging.page());
+        result.put("pageSize", paging.size());
 
         return ResponseEntity.ok(ApiResponse.success("获取成功", result));
     }
@@ -132,8 +136,11 @@ User user = userRepository.selectById(id);
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer status,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
+        PageParam paging = PageParam.of(page, pageSize);
+
 // 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Product> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
@@ -147,22 +154,22 @@ User user = userRepository.selectById(id);
         }
 
         // 计算分页参数
-        int offset = (page - 1) * pageSize;
+        long offset = paging.offset();
 
         // 查询商品列表
         List<Product> products = productRepository.selectList(wrapper.orderByDesc("created_time"));
         // 手动分页
         List<Product> paginatedProducts = products.stream()
                 .skip(offset)
-                .limit(pageSize)
+                .limit(paging.size())
                 .collect(java.util.stream.Collectors.toList());
 
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("items", paginatedProducts);
         result.put("total", products.size());
-        result.put("page", page);
-        result.put("pageSize", pageSize);
+        result.put("page", paging.page());
+        result.put("pageSize", paging.size());
 
         return ResponseEntity.ok(ApiResponse.success("获取成功", result));
     }
@@ -247,8 +254,11 @@ List<?> rawIds = (List<?>) params.get("ids");
     public ResponseEntity<ApiResponse<?>> getAllOrders(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) Integer status,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
+        PageParam paging = PageParam.of(page, pageSize);
+
 // 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (status != null) {
@@ -256,22 +266,22 @@ List<?> rawIds = (List<?>) params.get("ids");
         }
 
         // 计算分页参数
-        int offset = (page - 1) * pageSize;
+        long offset = paging.offset();
 
         // 查询订单列表
         List<Order> orders = orderRepository.selectList(wrapper.orderByDesc("created_time"));
         // 手动分页
         List<Order> paginatedOrders = orders.stream()
                 .skip(offset)
-                .limit(pageSize)
+                .limit(paging.size())
                 .collect(java.util.stream.Collectors.toList());
 
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("items", paginatedOrders);
         result.put("total", orders.size());
-        result.put("page", page);
-        result.put("pageSize", pageSize);
+        result.put("page", paging.page());
+        result.put("pageSize", paging.size());
 
         return ResponseEntity.ok(ApiResponse.success("获取成功", result));
     }
@@ -336,8 +346,11 @@ Order order = orderRepository.selectById(id);
     public ResponseEntity<ApiResponse<?>> getAllMessages(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
+        // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
+        PageParam paging = PageParam.of(page, pageSize);
+
 // 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Message> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
@@ -345,7 +358,7 @@ Order order = orderRepository.selectById(id);
         }
 
         // 计算分页参数
-        int offset = (page - 1) * pageSize;
+        long offset = paging.offset();
 
         // 查询消息列表
         List<Message> messages = messageRepository.selectList(wrapper).stream()
@@ -355,15 +368,15 @@ Order order = orderRepository.selectById(id);
         // 手动分页
         List<Message> paginatedMessages = messages.stream()
                 .skip(offset)
-                .limit(pageSize)
+                .limit(paging.size())
                 .collect(java.util.stream.Collectors.toList());
 
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("items", paginatedMessages);
         result.put("total", messages.size());
-        result.put("page", page);
-        result.put("pageSize", pageSize);
+        result.put("page", paging.page());
+        result.put("pageSize", paging.size());
 
         return ResponseEntity.ok(ApiResponse.success("获取成功", result));
     }

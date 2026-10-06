@@ -62,6 +62,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 业务层面可预期的参数错误，例如分页页码为 0。
+     * 由 {@code PageParam} 等共享校验组件抛出，统一以 400 返回。
+     */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<?>> handleBadRequest(BadRequestException e) {
+        log.warn("参数不合法: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, e.getMessage()));
+    }
+
+    /**
      * 路径变量/查询参数类型不匹配，例如把 "abc" 传给 {@code Long id}。
      *
      * <p>同样是客户端错误，不应返回 500。</p>
