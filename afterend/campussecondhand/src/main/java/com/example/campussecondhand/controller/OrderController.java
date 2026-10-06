@@ -85,9 +85,9 @@ public class OrderController {
                 orderMap.put("productImage", "");
             }
             
-            orderMap.put("price", order.getPrice().toString());
+            orderMap.put("price", order.getPrice() != null ? order.getPrice().toString() : "0");
             orderMap.put("status", order.getStatus());
-            orderMap.put("createdAt", order.getCreatedTime().toString());
+            orderMap.put("createdAt", order.getCreatedTime() != null ? order.getCreatedTime().toString() : "");
             orderMap.put("sellerId", order.getSellerId());
             
             // 获取卖家信息
@@ -144,6 +144,7 @@ public class OrderController {
     }
 
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<ApiResponse<?>> createOrder(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, Long> request) {
@@ -162,19 +163,26 @@ public class OrderController {
         if (product == null) {
             return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
-        
+        if (product.getStatus() != null && product.getStatus() == 1) {
+            return ResponseEntity.ok(ApiResponse.error(400, "商品已售出"));
+        }
+
         // 获取买家ID
         Long buyerId = userOpt.get().getId();
-        
-        // 创建订单 - 简化版本，不检查卖家是否存在
+
+        // 不能购买自己的商品
+        if (product.getUserId() != null && product.getUserId().equals(buyerId)) {
+            return ResponseEntity.ok(ApiResponse.error(400, "不能购买自己的商品"));
+        }
+
+        // 创建订单
         Order order = new Order();
-        order.setOrderNo("ORD" + System.currentTimeMillis());
+        order.setOrderNo("ORD" + System.currentTimeMillis() + String.format("%04d", (int)(Math.random() * 10000)));
         order.setProductId(productId);
         order.setBuyerId(buyerId);
-        // 如果商品没有userId，使用买家ID作为卖家ID（简化处理）
         order.setSellerId(product.getUserId() != null ? product.getUserId() : buyerId);
         order.setPrice(product.getPrice());
-        order.setStatus(0); // 0: 待处理
+        order.setStatus(0);
         order.setCreatedTime(java.time.LocalDateTime.now());
 
         User seller = userRepository.selectById(order.getSellerId());
@@ -182,15 +190,12 @@ public class OrderController {
         java.math.BigDecimal fee = orderFeeService.calculateServiceFee(product.getPrice(), studentVerified);
         order.setServiceFee(fee);
         order.setSellerIncome(product.getPrice().subtract(fee).setScale(2, java.math.RoundingMode.HALF_UP));
-        
-        // 同步更新商品状态为已售出
-        try {
-            productService.markAsSold(productId);
-        } catch (Exception e) {
-            // 忽略商品状态更新错误
-        }
-        
+
         orderRepository.insert(order);
+
+        // 订单创建成功后再标记商品售出
+        productService.markAsSold(productId);
+
         return ResponseEntity.ok(ApiResponse.success("创建成功", order));
     }
 
@@ -221,9 +226,22 @@ public class OrderController {
             }
         }
         
-        order.setId(id);
-        orderRepository.updateById(order);
-        return ResponseEntity.ok(ApiResponse.success("更新成功", order));
+        // 只允许更新状态字段，防止越权修改价格/买卖家等
+        if (order.getStatus() != null) {
+            existingOrder.setStatus(order.getStatus());
+        }
+        if (order.getPaidTime() != null) {
+            existingOrder.setPaidTime(order.getPaidTime());
+        }
+        if (order.getPaymentMethod() != null) {
+            existingOrder.setPaymentMethod(order.getPaymentMethod());
+        }
+        if (order.getTransactionId() != null) {
+            existingOrder.setTransactionId(order.getTransactionId());
+        }
+        existingOrder.setUpdatedTime(java.time.LocalDateTime.now());
+        orderRepository.updateById(existingOrder);
+        return ResponseEntity.ok(ApiResponse.success("更新成功", existingOrder));
     }
 
     @DeleteMapping("/{id}")

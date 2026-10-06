@@ -229,15 +229,21 @@ public class AdminController {
             return ResponseEntity.ok(ApiResponse.error(403, "权限不足"));
         }
 
-        List<Long> ids = (List<Long>) params.get("ids");
-        Integer status = (Integer) params.get("status");
-
-        if (ids == null || ids.isEmpty() || status == null) {
+        List<?> rawIds = (List<?>) params.get("ids");
+        Object rawStatus = params.get("status");
+        if (rawIds == null || rawIds.isEmpty() || rawStatus == null) {
             return ResponseEntity.ok(ApiResponse.error(400, "参数错误"));
+        }
+        Integer status;
+        try {
+            status = Integer.valueOf(rawStatus.toString());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, "状态值必须是数字"));
         }
 
         int updatedCount = 0;
-        for (Long id : ids) {
+        for (Object rawId : rawIds) {
+            Long id = Long.valueOf(rawId.toString());
             Product product = productRepository.selectById(id);
             if (product != null) {
                 product.setStatus(status);
@@ -378,6 +384,7 @@ public class AdminController {
 
         // 查询消息列表
         List<Message> messages = messageRepository.selectList(wrapper).stream()
+                .filter(m -> m.getCreatedTime() != null)
                 .sorted((m1, m2) -> m2.getCreatedTime().compareTo(m1.getCreatedTime()))
                 .collect(java.util.stream.Collectors.toList());
         // 手动分页

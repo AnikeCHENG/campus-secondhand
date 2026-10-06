@@ -41,10 +41,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<?>> login(@RequestBody Map<String, String> credentials) {
         try {
             String username = credentials.get("username");
-            // 暂时跳过密码验证，测试登录流程
+            String password = credentials.get("password");
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                return ResponseEntity.ok(ApiResponse.error(400, "用户名和密码不能为空"));
+            }
             Optional<User> userOpt = userService.findByUsername(username);
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
+                if (!passwordEncoder.matches(password, user.getPassword())) {
+                    return ResponseEntity.ok(ApiResponse.error(401, "用户名或密码错误"));
+                }
                 if (user.getStatus() == 0) {
                     return ResponseEntity.ok(ApiResponse.error(403, "账户已被禁用"));
                 }
