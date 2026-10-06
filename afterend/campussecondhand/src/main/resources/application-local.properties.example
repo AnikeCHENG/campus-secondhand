@@ -25,5 +25,5 @@ MAIL_PORT=465
 MAIL_USERNAME=
 MAIL_PASSWORD=
 
-***REMOVED*** ---- JWT 密钥（建议换成长随机串）----
+***REMOVED*** ---- JWT 密钥（建议 >= 64 位随机字符串；HS512 要求密钥不少于 64 字节）----
 JWT_SECRET=

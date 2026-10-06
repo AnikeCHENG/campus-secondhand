@@ -4,21 +4,37 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
     private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
 
-    private static final long jwtExpiration = 86400;
+    @Value("${jwt.expiration:86400}")
+    private long jwtExpiration;
 
-    private static final String jwtSecret = "CampusSecondhandSecretKeyForJWTTokenGeneration2024SecureKey123456";
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        try {
+            byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+            // HS512 要求密钥 >= 64 字节；不足时用 SHA-512 摘要派生成 64 字节，
+            // 保证任意长度的配置密钥都能安全用于 HS512，且结果稳定可复现
+            if (keyBytes.length < 64) {
+                keyBytes = MessageDigest.getInstance("SHA-512").digest(keyBytes);
+            }
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("无法初始化 JWT 签名密钥", e);
+        }
     }
 
     public String generateToken(String username) {
@@ -77,7 +93,8 @@ public class JwtUtil {
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-            return (Integer) claims.get("role");
+            Object roleClaim = claims.get("role");
+            return roleClaim == null ? 0 : ((Number) roleClaim).intValue();
         } catch (Exception e) {
             log.error("从JWT令牌中提取角色失败: ", e);
             return 0; // 默认角色为普通用户
