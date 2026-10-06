@@ -6,11 +6,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.stream.Collectors;
 
@@ -44,6 +46,31 @@ public class GlobalExceptionHandler {
         log.warn("参数校验失败: {}", detail);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(400, detail));
+    }
+
+    /**
+     * 请求体无法解析（JSON 格式错误、类型不匹配、字段缺失等）。
+     *
+     * <p>这是客户端发送方的问题，不是服务端故障。此前落到兜底分支被当作 500，
+     * 会让调用方误以为服务端出错而去查后端日志，实际只需修正请求体。</p>
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<?>> handleUnreadableBody(HttpMessageNotReadableException e) {
+        log.warn("请求体解析失败: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "请求参数格式不正确"));
+    }
+
+    /**
+     * 路径变量/查询参数类型不匹配，例如把 "abc" 传给 {@code Long id}。
+     *
+     * <p>同样是客户端错误，不应返回 500。</p>
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("参数类型不匹配: {}={}", e.getName(), e.getValue());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(400, "参数 " + e.getName() + " 格式不正确"));
     }
 
     @ExceptionHandler(Exception.class)

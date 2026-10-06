@@ -1,69 +1,41 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getUnreadCount } from '../api/message'
 
+/**
+ * 未读消息计数。
+ *
+ * <p>本 store 只负责「存值」，不负责「轮询」。轮询统一由 App.vue 中的
+ * {@code useMessageNotify} 负责（10 秒一次），它会调用 {@link setUnreadCount}
+ * 回写这里。此前本 store 还自带一套 startPolling（15 秒一次），
+ * 与前者请求同一接口、写入同一字段，导致登录后重复请求，已移除。</p>
+ */
 export const useNotificationStore = defineStore('notification', () => {
   const unreadCount = ref(0)
   const isPolling = ref(false)
-  let pollInterval = ref(null)
 
-  async function fetchUnreadCount() {
-    // 未登录时后端会因缺少 Authorization 头返回 401，这里直接跳过，避免无意义请求
-    if (!localStorage.getItem('token')) return
-    try {
-      const res = await getUnreadCount()
-      if (res.code === 200 && res.data) {
-        unreadCount.value = typeof res.data === 'object' ? (res.data.count || 0) : (res.data || 0)
-      }
-    } catch (e) {
-      console.error('获取未读消息数量失败:', e)
-    }
-  }
-
-  function startPolling(interval = 30000) {
-    if (isPolling.value) return
-    // 未登录不启动轮询：/messages/unread-count 需要 Authorization 头
-    if (!localStorage.getItem('token')) return
-
-    isPolling.value = true
-    fetchUnreadCount()
-
-    pollInterval.value = setInterval(() => {
-      fetchUnreadCount()
-    }, interval)
-  }
-
-  function stopPolling() {
-    isPolling.value = false
-    if (pollInterval.value) {
-      clearInterval(pollInterval.value)
-      pollInterval.value = null
-    }
-  }
-
+  /** 直接设置未读数，由轮询方或消息页在拿到最新数据后回写 */
   function setUnreadCount(count) {
     unreadCount.value = count
   }
 
+  /** 发消息成功后本地自减，避免等待下一次轮询 */
   function decrementUnreadCount() {
     if (unreadCount.value > 0) {
       unreadCount.value--
     }
   }
 
+  /** 登出时清零 */
   function resetUnreadCount() {
     unreadCount.value = 0
+    isPolling.value = false
   }
 
   return {
     unreadCount,
     isPolling,
-    fetchUnreadCount,
-    startPolling,
-    stopPolling,
     setUnreadCount,
     decrementUnreadCount,
     resetUnreadCount
   }
 })
-

@@ -378,7 +378,7 @@ import DashboardCard from '../components/DashboardCard.vue'
 import RecentItems from '../components/RecentItems.vue'
 import Recommendations from '../components/Recommendations.vue'
 import VideoBackground from '../components/VideoBackground.vue'
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { logout } from '../api/auth'
 import { getProductList } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
@@ -570,7 +570,8 @@ async function handleLogout() {
   } catch {
     console.log('Logout API call completed')
   }
-  notificationStore.stopPolling()
+  // 轮询由 App.vue 的 useMessageNotify 统一负责，登出后其 poll 因无 token
+  // 自动跳过请求；这里只需清掉徽标
   notificationStore.resetUnreadCount()
   localStorage.removeItem('token')
   localStorage.removeItem('username')
@@ -636,14 +637,12 @@ const activities = ref([
 ])
 
 onMounted(() => {
-  notificationStore.startPolling(15000)
+  // 未读消息轮询统一由 App.vue 的 useMessageNotify 负责（10 秒一次），
+  // 它会通过 store.setUnreadCount 更新徽标。此处不再重复调用
+  // notificationStore.startPolling，否则同一接口会被轮询两次。
   loadSearchHistory()
   loadProducts()
   loadDashboard()
-})
-
-onUnmounted(() => {
-  notificationStore.stopPolling()
 })
 
 function getDay(time) {
