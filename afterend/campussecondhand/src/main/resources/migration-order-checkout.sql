@@ -24,10 +24,16 @@ ALTER TABLE orders
     ADD COLUMN expire_time  DATETIME           NULL COMMENT '支付截止时间' AFTER paid_time;
 
 -- 历史订单回填快照与支付截止时间
+--
+-- order_image 必须用 REGEXP_SUBSTR 匹配完整 Data URL，不能用
+-- SUBSTRING_INDEX(images, ',', 1)：base64 载荷本身含逗号
+-- （data:image/jpeg;base64,AAAA），按第一个逗号切分会得到残缺的
+-- 'data:image/jpeg;base64'，图片彻底失效。
+-- base64 字母表为 A-Za-z0-9+/= 不含逗号，故可用字符类精确匹配。
 UPDATE orders o
 LEFT JOIN products p ON p.id = o.product_id
 SET o.order_title  = p.title,
-    o.order_image  = SUBSTRING_INDEX(p.images, ',', 1),
+    o.order_image  = REGEXP_SUBSTR(p.images, '^data:[^,]+;base64,[A-Za-z0-9+/=]+'),
     o.shipping_fee = 0.00,
     o.expire_time  = DATE_ADD(COALESCE(o.created_time, NOW()), INTERVAL 30 MINUTE)
 WHERE o.order_title IS NULL;

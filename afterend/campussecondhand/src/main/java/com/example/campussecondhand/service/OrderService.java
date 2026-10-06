@@ -47,6 +47,9 @@ public class OrderService {
     private static final DateTimeFormatter ORDER_NO_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
+    /** data URL 中分隔元信息与 base64 载荷的标记，见 {@link ***REMOVED***firstImage} */
+    private static final String BASE64_MARKER = "base64,";
+
     private final OrderRepository orderRepository;
     private final PaymentRecordRepository paymentRecordRepository;
     private final ProductRepository productRepository;
@@ -441,12 +444,27 @@ public class OrderService {
         return value != null ? value : BigDecimal.ZERO;
     }
 
-    /** 取逗号分隔图片列表的第一张 */
-    private static String firstImage(String images) {
+    /**
+     * 取多图列表中的第一张。
+     *
+     * <p>注意：{@code products.images} 存的是 base64 Data URL，其载荷内部<b>本身含逗号</b>
+     * （{@code data:image/jpeg;base64,AAAA}），直接按第一个逗号切分会把 URL 拦腰截断成
+     * {@code data:image/jpeg;base64}，图片彻底失效。base64 字母表为
+     * {@code A-Za-z0-9+/=} 不含逗号，因此从 {@code base64,} 之后开始找下一个逗号，
+     * 才是真正的多图分隔符。</p>
+     */
+    public static String firstImage(String images) {
         if (images == null || images.isBlank()) {
             return null;
         }
-        int idx = images.indexOf(',');
-        return idx > 0 ? images.substring(0, idx) : images;
+        int payloadStart = images.indexOf(BASE64_MARKER);
+        if (payloadStart < 0) {
+            // 非 data URL，退回按逗号分隔
+            int idx = images.indexOf(',');
+            return idx > 0 ? images.substring(0, idx) : images;
+        }
+        int from = payloadStart + BASE64_MARKER.length();
+        int sep = images.indexOf(',', from);
+        return sep > 0 ? images.substring(0, sep) : images;
     }
 }

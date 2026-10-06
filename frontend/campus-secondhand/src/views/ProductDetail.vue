@@ -125,11 +125,12 @@
           </section>
 
           <div class="actions">
-            <button class="btn btn-outline" type="button" @click="toggleFavorite">
+            <button class="btn btn-outline fav-btn" :class="{ 'is-favorited': isFavorited }"
+                    type="button" :disabled="favBusy" @click="toggleFavorite">
               <svg v-if="!isFavorited" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78l1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
-              <svg v-else viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <svg v-else :key="favPopKey" class="fav-pop" viewBox="0 0 24 24" fill="currentColor" stroke="none">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78l1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
               {{ isFavorited ? '已收藏' : '收藏' }}
@@ -151,6 +152,7 @@ import { ElMessage } from 'element-plus'
 import { getProductDetail } from '../api/product'
 import { getUserById } from '../api/user'
 import { createOrder } from '../api/order'
+import { checkFavorite, addFavorite, removeFavoriteById } from '../api/favorites'
 
 const router = useRouter()
 const route = useRoute()
@@ -160,6 +162,9 @@ const loading = ref(true)
 const error = ref('')
 const currentImage = ref('')
 const isFavorited = ref(false)
+const favBusy = ref(false)
+/** 自增 key，用于重播收藏成功的弹跳动画 */
+const favPopKey = ref(0)
 const buying = ref(false)
 
 const productImages = computed(() => {
@@ -177,11 +182,58 @@ async function fetchProduct() {
       product.value = res.data
       currentImage.value = productImages.value[0]
       if (product.value.userId) await fetchSellerInfo(product.value.userId)
+      await fetchFavoriteState()
     }
   } catch (e) {
     error.value = e.message || '加载商品详情失败'
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 切换收藏。
+ *
+ * 未登录时先引导登录，不直接发请求——否则必然 401 再弹错，体验很差。
+ * 收藏/取消均由后端保证幂等，这里不做乐观更新：等后端返回再改状态，
+ * 避免「界面显示已收藏但实际没存上」。
+ */
+async function toggleFavorite() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录后再收藏')
+    router.push({ path: '/login', query: { redirect: `/products/${product.value.id}` } })
+    return
+  }
+  if (favBusy.value) return
+  favBusy.value = true
+  try {
+    const wasFavorited = isFavorited.value
+    if (wasFavorited) {
+      await removeFavoriteById(product.value.id)
+    } else {
+      await addFavorite(product.value.id)
+    }
+    isFavorited.value = !wasFavorited
+    // 自增 key 重播弹跳动画
+    favPopKey.value++
+    ElMessage.success(wasFavorited ? '已取消收藏' : '收藏成功')
+  } catch (error) {
+    ElMessage.error(error?.cause?.message || error?.message || '操作失败，请稍后重试')
+  } finally {
+    favBusy.value = false
+  }
+}
+
+/** 回显收藏状态；未登录静默跳过 */
+async function fetchFavoriteState() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) return
+  try {
+    const res = await checkFavorite(product.value.id)
+    if (res.code === 200) isFavorited.value = !!res.data
+  } catch {
+    // 未登录/网络异常不影响商品展示
   }
 }
 
@@ -195,7 +247,7 @@ async function fetchSellerInfo(userId) {
 }
 
 function goBack() { router.back() }
-function toggleFavorite() { isFavorited.value = !isFavorited.value }
+
 
 function contactSeller() {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
@@ -325,4 +377,23 @@ onMounted(fetchProduct)
   .title { font-size: var(--text-xl); }
   .price-value { font-size: var(--text-3xl); }
 }
-</style>
+
+/* 收藏按钮：已收藏用 danger 色 + 实心爱心，附弹跳反馈 */
+.fav-btn.is-favorited {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.fav-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.fav-pop {
+  animation: fav-pop 420ms var(--ease);
+}
+@keyframes fav-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); }
+  60%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}</style>

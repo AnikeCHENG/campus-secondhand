@@ -1,29 +1,42 @@
 package com.example.campussecondhand.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.campussecondhand.common.ApiResponse;
-import com.example.campussecondhand.entity.Favorite;
 import com.example.campussecondhand.entity.User;
-import com.example.campussecondhand.repository.FavoriteRepository;
+import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
+import com.example.campussecondhand.service.BrowseHistoryService;
+import com.example.campussecondhand.service.FavoriteService;
 import com.example.campussecondhand.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+/**
+ * 收藏与浏览历史。
+ *
+ * <p>所有收藏端点以 {@code productId} 为维度（而非收藏记录 id），
+ * 前端无需先查列表即可直接取消收藏。集合操作保持幂等。</p>
+ */
 @RestController
 @RequestMapping("/api/favorites")
 @CrossOrigin(origins = "*")
 public class FavoriteController {
 
     @Autowired
-    private FavoriteRepository favoriteRepository;
+    private FavoriteService favoriteService;
+
+    @Autowired
+    private BrowseHistoryService browseHistoryService;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -41,79 +54,61 @@ public class FavoriteController {
         }
     }
 
-    @GetMapping("/my")
-    public ResponseEntity<ApiResponse<?>> getMyFavorites(@RequestHeader("Authorization") String authHeader) {
+    /** 我的收藏：含商品图/标题/价格/状态，按收藏时间倒序 */
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<?>> list(@RequestHeader("Authorization") String authHeader) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        QueryWrapper<Favorite> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", userOpt.get().getId());
-        List<Favorite> favorites = favoriteRepository.selectList(wrapper);
-        return ResponseEntity.ok(ApiResponse.success("获取成功", favorites));
+        List<Map<String, Object>> list = favoriteService.listFavorites(userOpt.get().getId());
+        return ResponseEntity.ok(ApiResponse.success("获取成功", list));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> getFavoriteById(
+    /**
+     * 是否已收藏，供商品详情页回显。
+     *
+     * <p>{@code Authorization} 必须是<b>可选</b>请求头：未登录时返回 false，
+     * 而不是抛 MissingRequestHeader 变成 401——商品详情允许游客访问，
+     * 收藏态回显属于附带能力，不该把游客挡在门外。</p>
+     */
+    @GetMapping("/check/{productId}")
+    public ResponseEntity<ApiResponse<?>> check(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable Long productId) {
+        Optional<User> userOpt = getUserFromToken(authHeader);
+        boolean favorited = userOpt.isPresent()
+                && favoriteService.isFavorited(userOpt.get().getId(), productId);
+        return ResponseEntity.ok(ApiResponse.success("获取成功", favorited));
+    }
+
+    /** 收藏商品；重复收藏返回原状态，不报错 */
+    @PostMapping("/{productId}")
+    public ResponseEntity<ApiResponse<?>> add(
             @RequestHeader("Authorization") String authHeader,
-            @PathVariable Long id) {
+            @PathVariable Long productId) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
+            return ResponseEntity.ok(ApiResponse.error(401, "请先登录后再收藏"));
         }
-        Favorite favorite = favoriteRepository.selectById(id);
-        if (favorite == null) {
-            return ResponseEntity.ok(ApiResponse.error(404, "收藏不存在"));
+        if (productRepository.selectById(productId) == null) {
+            return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
         }
-        if (!favorite.getUserId().equals(userOpt.get().getId())) {
-            return ResponseEntity.ok(ApiResponse.error(403, "无权访问此收藏"));
-        }
-        return ResponseEntity.ok(ApiResponse.success("获取成功", favorite));
+        boolean added = favoriteService.addFavorite(userOpt.get().getId(), productId);
+        return ResponseEntity.ok(ApiResponse.success(
+                added ? "收藏成功" : "已收藏", favoriteService.isFavorited(userOpt.get().getId(), productId)));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<?>> createFavorite(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody Favorite favorite) {
-        Optional<User> userOpt = getUserFromToken(authHeader);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
-        }
-        favorite.setUserId(userOpt.get().getId());
-        favoriteRepository.insert(favorite);
-        return ResponseEntity.ok(ApiResponse.success("收藏成功", favorite));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> deleteFavorite(
-            @RequestHeader("Authorization") String authHeader,
-            @PathVariable Long id) {
-        Optional<User> userOpt = getUserFromToken(authHeader);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
-        }
-        Favorite favorite = favoriteRepository.selectById(id);
-        if (favorite == null) {
-            return ResponseEntity.ok(ApiResponse.error(404, "收藏不存在"));
-        }
-        if (!favorite.getUserId().equals(userOpt.get().getId())) {
-            return ResponseEntity.ok(ApiResponse.error(403, "无权操作此收藏"));
-        }
-        favoriteRepository.deleteById(id);
-        return ResponseEntity.ok(ApiResponse.success("取消收藏成功", null));
-    }
-
-    @GetMapping("/product/{productId}")
-    public ResponseEntity<ApiResponse<?>> checkFavorite(
+    /** 取消收藏；未收藏也返回成功（幂等） */
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<ApiResponse<?>> remove(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long productId) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        QueryWrapper<Favorite> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", userOpt.get().getId()).eq("product_id", productId);
-        Favorite favorite = favoriteRepository.selectOne(wrapper);
-        return ResponseEntity.ok(ApiResponse.success("获取成功", favorite != null));
+        favoriteService.removeFavorite(userOpt.get().getId(), productId);
+        return ResponseEntity.ok(ApiResponse.success("已取消收藏", false));
     }
 }

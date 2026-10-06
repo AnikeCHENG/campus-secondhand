@@ -133,6 +133,21 @@ INSERT INTO categories (name, description, sort_order, status) VALUES
 
 
 -- ============================================================
+-- 浏览历史表
+-- uk_user_product 是 INSERT ... ON DUPLICATE KEY UPDATE 的前提：
+-- 没有它，重复浏览同一商品会插入重复行，历史列表出现多条同一商品。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS browse_history (
+    id             BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键',
+    user_id        BIGINT   NOT NULL                COMMENT '用户ID',
+    product_id     BIGINT   NOT NULL                COMMENT '商品ID',
+    last_view_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '最近浏览时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_product (user_id, product_id),
+    KEY idx_user_time (user_id, last_view_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='浏览历史表';
+
+-- ============================================================
 -- 支付流水表
 -- amount 为买家实付（订单价 + 运费），不含卖家承担的服务费
 -- trade_no 唯一索引：同一渠道流水不允许重复入账

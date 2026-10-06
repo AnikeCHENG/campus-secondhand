@@ -204,20 +204,29 @@
             v-for="(item, idx) in myFavorites" 
             :key="idx" 
             class="favorite-card"
+            :class="{ 'is-unavailable': item.isUnavailable }"
             @click="viewProduct(item)"
           >
             <div class="favorite-image">
-              <img :src="item.image" :alt="item.title" />
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <span v-else class="favorite-noimg" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+                </svg>
+              </span>
+              <span v-if="item.isDeleted" class="corner-badge">已删除</span>
+              <span v-else-if="item.isSold" class="corner-badge">已售出</span>
             </div>
             <div class="favorite-info">
               <h3 class="favorite-title">{{ item.title }}</h3>
               <div class="favorite-price">{{ item.price }}</div>
               <div class="favorite-meta">
-                <span class="favorite-seller">{{ item.seller }}</span>
+                <span class="favorite-seller">卖家 {{ item.seller }}</span>
                 <span class="favorite-time">{{ item.time }}</span>
               </div>
             </div>
-            <button class="favorite-remove" @click.stop="removeFavorite(item)">
+            <button class="favorite-remove" :aria-label="`取消收藏 ${item.title}`" @click.stop="removeFavorite(item)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -286,6 +295,14 @@
         </div>
 
         <div v-if="activeTab === 'history'" class="history-list">
+          <div v-if="browseHistory.length > 0" class="history-toolbar">
+            <span class="history-count">共 {{ browseHistory.length }} 条，最多保留 50 条</span>
+            <button type="button" class="history-clear" @click="clearBrowseHistory">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+              清空历史
+            </button>
+          </div>
           <div 
             v-for="(item, idx) in browseHistory" 
             :key="idx" 
@@ -293,12 +310,20 @@
             @click="viewProduct(item)"
           >
             <div class="history-image">
-              <img :src="item.image" :alt="item.title" />
+              <img v-if="item.image" :src="item.image" :alt="item.title" />
+              <span v-else class="history-noimg" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
+                </svg>
+              </span>
             </div>
             <div class="history-info">
               <h3 class="history-title">{{ item.title }}</h3>
               <div class="history-meta">
                 <span class="history-price">{{ item.price }}</span>
+                <span v-if="item.isSold" class="history-tag">已售出</span>
+                <span v-if="item.isDeleted" class="history-tag">已删除</span>
                 <span class="history-time">{{ item.time }}</span>
               </div>
             </div>
@@ -515,10 +540,12 @@
 <script setup>
 import { ref, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { logout } from '../api/auth'
 import { updateProfile, getProfile } from '../api/user'
 import { getMyProducts, deleteProduct as deleteProductAPI } from '../api/product'
 import { getOrderList, confirmOrder, cancelOrder } from '../api/order'
+import { getFavoriteList, removeFavoriteById, getHistoryList, clearHistory } from '../api/favorites'
 
 const router = useRouter()
 function go(path) { router.push(path) }
@@ -712,9 +739,102 @@ async function loadAllData() {
     loadUserProfile(),
     loadMyProducts(),
     loadDrafts(),
-    loadOrders()
+    loadOrders(),
+    loadFavorites(),
+    loadBrowseHistory()
   ])
   loading.value = false
+}
+
+/** 我的收藏（真实数据） */
+async function loadFavorites() {
+  try {
+    const res = await getFavoriteList()
+    if (res.code === 200 && res.data) {
+      myFavorites.value = res.data.map(mapFavoriteItem)
+      stats.value.favorites = myFavorites.value.length
+      const tab = tabs.value.find(t => t.id === 'favorites')
+      if (tab) tab.count = myFavorites.value.length
+    }
+  } catch (error) {
+    console.error('加载收藏失败:', error)
+  }
+}
+
+/** 收藏项字段映射为模板所需结构 */
+function mapFavoriteItem(raw) {
+  return {
+    id: raw.id,
+    productId: raw.productId,
+    title: raw.title,
+    image: raw.image,
+    price: typeof raw.price === 'number' ? `¥${raw.price.toFixed(2)}` : `¥${raw.price ?? '0.00'}`,
+    seller: raw.sellerName || '',
+    time: formatTimeAgo(raw.createTime),
+    // 已售出/已下架置灰加角标，但依然展示——收藏时商品在售，
+    // 卖出后应看到「已售出」而不是凭空消失
+    isSold: raw.status === 2,
+    isUnavailable: raw.status !== 1 || raw.deleted,
+    isDeleted: !!raw.deleted
+  }
+}
+
+/** 浏览历史（真实数据） */
+async function loadBrowseHistory() {
+  try {
+    const res = await getHistoryList()
+    if (res.code === 200 && res.data) {
+      browseHistory.value = res.data.map(raw => ({
+        id: raw.id,
+        productId: raw.productId,
+        title: raw.title,
+        image: raw.image,
+        price: typeof raw.price === 'number' ? `¥${raw.price.toFixed(2)}` : `¥${raw.price ?? '0.00'}`,
+        time: formatTimeAgo(raw.lastViewTime),
+        isSold: raw.status === 2,
+        isDeleted: !!raw.deleted
+      }))
+      const tab = tabs.value.find(t => t.id === 'history')
+      if (tab) tab.count = browseHistory.value.length
+    }
+  } catch (error) {
+    console.error('加载浏览历史失败:', error)
+  }
+}
+
+/** 相对时间：刚刚 / x分钟前 / x小时前 / x天前 / 具体日期 */
+function formatTimeAgo(value) {
+  if (!value) return ''
+  const time = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(time.getTime())) return String(value).slice(0, 16)
+  const diff = Date.now() - time.getTime()
+  if (diff < 60_000) return '刚刚'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
+  if (diff < 2_592_000_000) return `${Math.floor(diff / 86_400_000)} 天前`
+  return time.toLocaleDateString('zh-CN')
+}
+
+/** 清空浏览历史，需二次确认 */
+async function clearBrowseHistory() {
+  try {
+    await ElMessageBox.confirm('确定要清空全部浏览记录吗？此操作不可恢复。', '清空浏览历史', {
+      confirmButtonText: '确定清空',
+      cancelButtonText: '再想想',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  try {
+    await clearHistory()
+    browseHistory.value = []
+    const tab = tabs.value.find(t => t.id === 'history')
+    if (tab) tab.count = 0
+    ElMessage.success('已清空浏览记录')
+  } catch (error) {
+    ElMessage.error(error?.cause?.message || error?.message || '清空失败，请稍后重试')
+  }
 }
 
 function editDraft(draft) {
@@ -797,10 +917,28 @@ async function deleteProduct(item) {
   }
 }
 
-function removeFavorite(item) {
-  const idx = myFavorites.value.findIndex(p => p.id === item.id)
-  if (idx !== -1) myFavorites.value.splice(idx, 1)
-  stats.value.favorites--
+/** 取消收藏（发真实请求，失败不改动本地状态） */
+async function removeFavorite(item) {
+  try {
+    await ElMessageBox.confirm(`确定取消收藏「${item.title}」吗？`, '取消收藏', {
+      confirmButtonText: '确定取消',
+      cancelButtonText: '再想想',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  try {
+    await removeFavoriteById(item.productId ?? item.id)
+    const idx = myFavorites.value.findIndex(p => (p.productId ?? p.id) === (item.productId ?? item.id))
+    if (idx !== -1) myFavorites.value.splice(idx, 1)
+    stats.value.favorites = Math.max(stats.value.favorites - 1, 0)
+    const tab = tabs.value.find(t => t.id === 'favorites')
+    if (tab) tab.count = myFavorites.value.length
+    ElMessage.success('已取消收藏')
+  } catch (error) {
+    ElMessage.error(error?.cause?.message || error?.message || '取消收藏失败，请稍后重试')
+  }
 }
 
 /** 待支付订单跳转收银台 */
@@ -2551,4 +2689,68 @@ onMounted(() => {
 .modal-footer { border-top: 1px solid var(--border); }
 .btn-cancel { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); }
 .btn-save { background: var(--accent); color: ***REMOVED***fff; }
-</style>
+
+/* ============ 收藏 / 浏览历史 真实数据样式 ============ */
+/* 已售出/已下架/已删除：置灰但保留可见，让用户知道商品发生过什么 */
+.favorite-card.is-unavailable .favorite-image,
+.favorite-card.is-unavailable .favorite-info {
+  opacity: 0.55;
+  filter: grayscale(0.7);
+}
+.favorite-noimg,
+.history-noimg {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 96px;
+  color: ***REMOVED***9a9a92;
+}
+.favorite-noimg svg,
+.history-noimg svg { width: 32px; height: 32px; }
+.corner-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: ***REMOVED***fff;
+  background: ***REMOVED***6b6b64;
+  border-radius: 999px;
+}
+.corner-badge.sold { background: ***REMOVED***c0392b; }
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.history-count { font-size: 13px; color: ***REMOVED***9a9a92; }
+.history-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: ***REMOVED***6b6b64;
+  background: transparent;
+  border: 1px solid ***REMOVED***d8d8d2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.history-clear svg { width: 14px; height: 14px; }
+.history-clear:hover {
+  color: ***REMOVED***c0392b;
+  border-color: ***REMOVED***c0392b;
+  background: rgba(192, 57, 43, 0.06);
+}
+.history-tag {
+  padding: 1px 6px;
+  font-size: 12px;
+  color: ***REMOVED***c0392b;
+  background: rgba(192, 57, 43, 0.1);
+  border-radius: 4px;
+}</style>

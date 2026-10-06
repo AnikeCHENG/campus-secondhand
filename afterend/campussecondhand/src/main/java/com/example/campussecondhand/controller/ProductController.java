@@ -4,6 +4,7 @@ import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.repository.UserRepository;
+import com.example.campussecondhand.service.BrowseHistoryService;
 import com.example.campussecondhand.service.ProductService;
 import com.example.campussecondhand.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,9 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private BrowseHistoryService browseHistoryService;
 
     @Autowired
     private UserRepository userRepository;
@@ -79,15 +83,47 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("获取成功", products));
     }
 
+    /**
+     * 商品详情。
+     *
+     * <p>浏览历史在此顺带记录，但 {@code Authorization} 必须是<b>可选</b>请求头：
+     * 商品详情允许游客访问，若设为必填会把未登录访客直接挡在 401。
+     * 解析不到用户就跳过记录，绝不影响详情本身的返回。</p>
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> detail(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<?>> detail(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Product product = productService.findByIdWithViewCount(id);
         if (product != null) {
             User seller = userRepository.selectById(product.getUserId());
             if (seller != null) product.setSeller(seller);
+            recordBrowseHistory(authHeader, id);
             return ResponseEntity.ok(ApiResponse.success("获取成功", product));
         }
         return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
+    }
+
+    /**
+     * 记录浏览历史。未登录或 token 无效时静默跳过。
+     *
+     * <p>整段包 try-catch：历史记录属于附带能力，绝不能因为它失败
+     * 而让用户看不到商品详情。</p>
+     */
+    private void recordBrowseHistory(String authHeader, Long productId) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return;
+            }
+            String username = jwtUtil.getUsernameFromToken(authHeader.substring(7));
+            if (username == null) {
+                return;
+            }
+            Optional<User> userOpt = userRepository.findByUsername(username);
+            userOpt.ifPresent(user -> browseHistoryService.recordView(user.getId(), productId));
+        } catch (Exception e) {
+            // 静默忽略：不影响详情返回
+        }
     }
 
     @PostMapping("/create")

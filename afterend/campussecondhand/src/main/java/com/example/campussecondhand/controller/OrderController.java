@@ -89,7 +89,8 @@ public class OrderController {
             Product product = productRepository.selectById(order.getProductId());
             if (product != null) {
                 orderMap.put("productTitle", product.getTitle());
-                orderMap.put("productImage", product.getImages() != null ? product.getImages().split(",")[0] : "");
+                // 图片是 base64 Data URL，载荷内含逗号，必须用 firstImage 而非 split(",")
+                orderMap.put("productImage", OrderService.firstImage(product.getImages()));
             } else {
                 orderMap.put("productTitle", "商品已删除");
                 orderMap.put("productImage", "");
