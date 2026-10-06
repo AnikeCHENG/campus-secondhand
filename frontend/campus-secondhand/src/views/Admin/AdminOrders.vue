@@ -23,7 +23,7 @@
     <div class="order-list">
       <div class="order-item" v-for="order in orders" :key="order.id">
         <div class="order-header">
-          <h3>订单 ***REMOVED***{{ order.id }}</h3>
+          <h3>订单 #{{ order.id }}</h3>
           <span class="order-status" :class="order.status">{{ orderStatusMap[order.status] }}</span>
         </div>
         <div class="order-info">
@@ -205,7 +205,7 @@ onMounted(() => {
 
 .admin-orders h1 {
   font-size: 2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 30px;
 }
 
@@ -219,14 +219,14 @@ onMounted(() => {
 .search-input {
   flex: 1;
   padding: 10px;
-  border: 1px solid ***REMOVED***ddd;
+  border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 16px;
 }
 
 .filter-select {
   padding: 10px;
-  border: 1px solid ***REMOVED***ddd;
+  border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 16px;
   background-color: white;
@@ -234,7 +234,7 @@ onMounted(() => {
 
 .search-btn {
   padding: 10px 20px;
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -243,7 +243,7 @@ onMounted(() => {
 }
 
 .search-btn:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 
 /* 分页样式 */
@@ -254,13 +254,13 @@ onMounted(() => {
   gap: 10px;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid ***REMOVED***eee;
+  border-top: 1px solid #eee;
 }
 
 .pagination-button {
   padding: 8px 16px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -269,7 +269,7 @@ onMounted(() => {
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -280,7 +280,7 @@ onMounted(() => {
 
 .pagination-info {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
   font-weight: 500;
 }
 
@@ -291,7 +291,7 @@ onMounted(() => {
 }
 
 .order-item {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -306,7 +306,7 @@ onMounted(() => {
 
 .order-header h3 {
   font-size: 1.2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin: 0;
 }
 
@@ -318,17 +318,17 @@ onMounted(() => {
 }
 
 .order-status.PENDING {
-  background-color: ***REMOVED***ffeb3b;
-  color: ***REMOVED***333;
+  background-color: #ffeb3b;
+  color: #333;
 }
 
 .order-status.COMPLETED {
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
 }
 
 .order-status.CANCELLED {
-  background-color: ***REMOVED***f44336;
+  background-color: #f44336;
   color: white;
 }
 
@@ -338,7 +338,7 @@ onMounted(() => {
 
 .order-info p {
   margin: 5px 0;
-  color: ***REMOVED***666;
+  color: #666;
 }
 
 .order-actions {
@@ -348,7 +348,7 @@ onMounted(() => {
 
 .btn-primary {
   padding: 8px 16px;
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -357,12 +357,12 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 
 .btn-secondary {
   padding: 8px 16px;
-  background-color: ***REMOVED***2196F3;
+  background-color: #2196F3;
   color: white;
   border: none;
   border-radius: 5px;
@@ -371,12 +371,12 @@ onMounted(() => {
 }
 
 .btn-secondary:hover {
-  background-color: ***REMOVED***0b7dda;
+  background-color: #0b7dda;
 }
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: ***REMOVED***f44336;
+  background-color: #f44336;
   color: white;
   border: none;
   border-radius: 5px;
@@ -385,13 +385,13 @@ onMounted(() => {
 }
 
 .btn-danger:hover {
-  background-color: ***REMOVED***da190b;
+  background-color: #da190b;
 }
 
 .no-orders {
   text-align: center;
   padding: 50px;
-  color: ***REMOVED***999;
+  color: #999;
   font-size: 1.2rem;
 }
 </style>
@@ -404,7 +404,7 @@ onMounted(() => {
 .search-input, .filter-select { flex: 1; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: var(--text-base); color: var(--text); background: var(--surface); }
 .filter-select { flex: 0 0 auto; }
 .search-input:focus, .filter-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.search-btn { padding: 10px 20px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
+.search-btn { padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
 .search-btn:hover { background: var(--accent-hover); }
 
 .order-list { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -416,12 +416,12 @@ onMounted(() => {
 .order-status.CANCELLED { background: var(--danger-soft); color: var(--danger); }
 .order-info p { margin: 4px 0; color: var(--text-2); font-size: var(--text-sm); }
 .order-actions { display: flex; gap: var(--space-2); }
-.btn-primary { padding: 7px 16px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.btn-primary { padding: 7px 16px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--weight-medium); }
 .btn-primary:hover { background: var(--accent-hover); }
 .btn-secondary { padding: 7px 16px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }
 .btn-secondary:hover { background: var(--surface-2); }
 .btn-danger { padding: 7px 16px; background: var(--danger-soft); color: var(--danger); border: none; border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.btn-danger:hover { background: var(--danger); color: ***REMOVED***fff; }
+.btn-danger:hover { background: var(--danger); color: #fff; }
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .pagination-button { padding: 6px 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }

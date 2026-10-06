@@ -187,7 +187,7 @@ function onSubmit() {
   justify-content: center;
   border-radius: var(--radius);
   background: var(--accent);
-  color: ***REMOVED***fff;
+  color: #fff;
   margin-bottom: var(--space-4);
 }
 .brand-mark svg { width: 24px; height: 24px; }

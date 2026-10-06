@@ -1,18 +1,18 @@
-***REMOVED*** 校园二手交易平台
+# 校园二手交易平台
 
 基于 **Spring Boot + Vue 3** 的全栈校园二手交易平台，提供商品发布、搜索浏览、在线交易、站内消息、管理后台等完整功能。
 
 ---
 
-***REMOVED******REMOVED*** 项目简介
+## 项目简介
 
 校园二手交易平台是一个面向高校学生的废旧物品再利用平台，旨在为在校学生提供一个便捷、安全的二手物品交易渠道。项目采用前后端分离架构，后端基于 Spring Boot 提供 RESTful API，前端基于 Vue 3 + Element Plus 构建现代化用户界面，同时内置完整的管理后台。
 
 ---
 
-***REMOVED******REMOVED*** 技术栈
+## 技术栈
 
-***REMOVED******REMOVED******REMOVED*** 后端
+### 后端
 
 | 分类 | 技术 | 版本 |
 |------|------|------|
@@ -24,7 +24,7 @@
 | 安全 | Spring Security + BCrypt | - |
 | 构建 | Maven | 3.x |
 
-***REMOVED******REMOVED******REMOVED*** 前端
+### 前端
 
 | 分类 | 技术 | 版本 |
 |------|------|------|
@@ -37,9 +37,9 @@
 
 ---
 
-***REMOVED******REMOVED*** 功能模块
+## 功能模块
 
-***REMOVED******REMOVED******REMOVED*** 用户端
+### 用户端
 
 | 模块 | 功能 |
 |------|------|
@@ -51,7 +51,7 @@
 | 收藏功能 | 添加/取消收藏、收藏列表 |
 | 站内消息 | 买卖双方实时聊天、未读消息提醒、消息轮询 |
 
-***REMOVED******REMOVED******REMOVED*** 管理后台
+### 管理后台
 
 | 模块 | 功能 |
 |------|------|
@@ -64,62 +64,62 @@
 
 ---
 
-***REMOVED******REMOVED*** 项目结构
+## 项目结构
 
 ```
 campus-secondhand/
-├── afterend/                          ***REMOVED*** 后端 Spring Boot 项目
+├── afterend/                          # 后端 Spring Boot 项目
 │   └── campussecondhand/
 │       ├── src/main/java/com/example/campussecondhand/
-│       │   ├── common/                ***REMOVED*** 统一响应封装 (ApiResponse)
-│       │   ├── config/                ***REMOVED*** Spring Security + MyBatis-Plus 配置
-│       │   ├── controller/            ***REMOVED*** 8 个控制器 (Auth/User/Product/Order/
-│       │   │                          ***REMOVED***   Category/Favorite/Message/Admin)
-│       │   ├── dto/                   ***REMOVED*** 数据传输对象 (UserDTO)
-│       │   ├── entity/                ***REMOVED*** 6 个实体类 (User/Product/Order/
-│       │   │                          ***REMOVED***   Category/Favorite/Message)
-│       │   ├── exception/             ***REMOVED*** 全局异常处理
-│       │   ├── repository/            ***REMOVED*** MyBatis-Plus Mapper 接口
-│       │   ├── service/               ***REMOVED*** 业务逻辑层
-│       │   └── util/                  ***REMOVED*** JWT 工具类
+│       │   ├── common/                # 统一响应封装 (ApiResponse)
+│       │   ├── config/                # Spring Security + MyBatis-Plus 配置
+│       │   ├── controller/            # 8 个控制器 (Auth/User/Product/Order/
+│       │   │                          #   Category/Favorite/Message/Admin)
+│       │   ├── dto/                   # 数据传输对象 (UserDTO)
+│       │   ├── entity/                # 6 个实体类 (User/Product/Order/
+│       │   │                          #   Category/Favorite/Message)
+│       │   ├── exception/             # 全局异常处理
+│       │   ├── repository/            # MyBatis-Plus Mapper 接口
+│       │   ├── service/               # 业务逻辑层
+│       │   └── util/                  # JWT 工具类
 │       └── src/main/resources/
-│           └── application.properties ***REMOVED*** 应用配置
+│           └── application.properties # 应用配置
 │
-├── frontend/                          ***REMOVED*** 前端 Vue 3 项目
+├── frontend/                          # 前端 Vue 3 项目
 │   └── campus-secondhand/
 │       ├── src/
-│       │   ├── api/                   ***REMOVED*** API 服务层 (auth/product/message/order/user)
-│       │   ├── components/            ***REMOVED*** 可复用组件 (DashboardCard/HeroBanner/...)
-│       │   ├── router/                ***REMOVED*** 路由配置 + 全局守卫
-│       │   ├── stores/                ***REMOVED*** Pinia 状态管理 (notification)
-│       │   └── views/                 ***REMOVED*** 页面视图
-│       │       ├── Home.vue           ***REMOVED*** 首页
-│       │       ├── Login.vue          ***REMOVED*** 登录
-│       │       ├── Register.vue       ***REMOVED*** 注册
-│       │       ├── Products.vue       ***REMOVED*** 商品列表
-│       │       ├── ProductDetail.vue  ***REMOVED*** 商品详情
-│       │       ├── PostProduct.vue    ***REMOVED*** 发布商品
-│       │       ├── Messages.vue       ***REMOVED*** 站内消息
-│       │       ├── Profile.vue        ***REMOVED*** 个人中心
-│       │       └── Admin/             ***REMOVED*** 管理后台 (5个页面)
-│       ├── vite.config.js             ***REMOVED*** Vite 配置 (含 API 代理)
+│       │   ├── api/                   # API 服务层 (auth/product/message/order/user)
+│       │   ├── components/            # 可复用组件 (DashboardCard/HeroBanner/...)
+│       │   ├── router/                # 路由配置 + 全局守卫
+│       │   ├── stores/                # Pinia 状态管理 (notification)
+│       │   └── views/                 # 页面视图
+│       │       ├── Home.vue           # 首页
+│       │       ├── Login.vue          # 登录
+│       │       ├── Register.vue       # 注册
+│       │       ├── Products.vue       # 商品列表
+│       │       ├── ProductDetail.vue  # 商品详情
+│       │       ├── PostProduct.vue    # 发布商品
+│       │       ├── Messages.vue       # 站内消息
+│       │       ├── Profile.vue        # 个人中心
+│       │       └── Admin/             # 管理后台 (5个页面)
+│       ├── vite.config.js             # Vite 配置 (含 API 代理)
 │       └── package.json
 │
-├── auto_categorize_products.py        ***REMOVED*** 商品自动分类脚本
-├── create_products.py                 ***REMOVED*** 测试数据生成脚本
-├── update_product_images.py           ***REMOVED*** 图片更新脚本
-├── update_product_prices.py           ***REMOVED*** 价格更新脚本
-├── test_login.py                      ***REMOVED*** 登录测试脚本
-├── test_register.py                   ***REMOVED*** 注册测试脚本
-├── 基于Spring Boot的校园二手交易平台的设计与实现.docx   ***REMOVED*** 毕业论文
-└── 数据库表结构.xlsx                   ***REMOVED*** 数据库设计文档
+├── auto_categorize_products.py        # 商品自动分类脚本
+├── create_products.py                 # 测试数据生成脚本
+├── update_product_images.py           # 图片更新脚本
+├── update_product_prices.py           # 价格更新脚本
+├── test_login.py                      # 登录测试脚本
+├── test_register.py                   # 注册测试脚本
+├── 基于Spring Boot的校园二手交易平台的设计与实现.docx   # 毕业论文
+└── 数据库表结构.xlsx                   # 数据库设计文档
 ```
 
 ---
 
-***REMOVED******REMOVED*** 快速开始
+## 快速开始
 
-***REMOVED******REMOVED******REMOVED*** 环境要求
+### 环境要求
 
 - JDK 17+
 - Maven 3.x
@@ -127,7 +127,7 @@ campus-secondhand/
 - Node.js 18+
 - npm / pnpm
 
-***REMOVED******REMOVED******REMOVED*** 1. 数据库初始化
+### 1. 数据库初始化
 
 ```sql
 CREATE DATABASE waste_recycle_platform DEFAULT CHARACTER SET utf8mb4;
@@ -141,7 +141,7 @@ spring.datasource.username=root
 spring.datasource.password=your_password
 ```
 
-***REMOVED******REMOVED******REMOVED*** 2. 启动后端
+### 2. 启动后端
 
 ```bash
 cd afterend/campussecondhand
@@ -150,7 +150,7 @@ mvn spring-boot:run
 
 后端服务运行在 `http://localhost:8080`
 
-***REMOVED******REMOVED******REMOVED*** 3. 启动前端
+### 3. 启动前端
 
 ```bash
 cd frontend/campus-secondhand
@@ -160,14 +160,14 @@ npm run dev
 
 前端开发服务器运行在 `http://localhost:5173`，API 请求自动代理到后端 8080 端口。
 
-***REMOVED******REMOVED******REMOVED*** 4. 访问
+### 4. 访问
 
 - 用户端：`http://localhost:5173`
 - 管理后台：`http://localhost:5173/admin`（需要管理员账号）
 
 ---
 
-***REMOVED******REMOVED*** API 接口概览
+## API 接口概览
 
 | 模块 | 基路径 | 接口数 | 说明 |
 |------|--------|--------|------|
@@ -183,9 +183,9 @@ npm run dev
 
 ---
 
-***REMOVED******REMOVED*** 数据库设计
+## 数据库设计
 
-***REMOVED******REMOVED******REMOVED*** 核心表
+### 核心表
 
 | 表名 | 说明 | 核心字段 |
 |------|------|----------|
@@ -198,7 +198,7 @@ npm run dev
 
 ---
 
-***REMOVED******REMOVED*** 项目亮点
+## 项目亮点
 
 - **前后端分离**：Spring Boot RESTful API + Vue 3 SPA，架构清晰
 - **完整业务流程**：注册→登录→浏览→发布→购买→消息沟通→订单跟踪，全链路闭环
@@ -212,6 +212,6 @@ npm run dev
 
 ---
 
-***REMOVED******REMOVED*** 许可证
+## 许可证
 
 MIT License

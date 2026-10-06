@@ -9,9 +9,9 @@ import java.util.List;
 
 @Mapper
 public interface CommentRecordRepository extends BaseMapper<CommentRecord> {
-    @Select("SELECT * FROM comments WHERE post_id = ***REMOVED***{postId} ORDER BY created_time ASC LIMIT ***REMOVED***{size} OFFSET ***REMOVED***{offset}")
+    @Select("SELECT * FROM comments WHERE post_id = #{postId} ORDER BY created_time ASC LIMIT #{size} OFFSET #{offset}")
     List<CommentRecord> findByPostId(@Param("postId") Long postId, @Param("size") int size, @Param("offset") int offset);
 
-    @Select("SELECT COUNT(*) FROM comments WHERE post_id = ***REMOVED***{postId}")
+    @Select("SELECT COUNT(*) FROM comments WHERE post_id = #{postId}")
     int countByPostId(@Param("postId") Long postId);
 }

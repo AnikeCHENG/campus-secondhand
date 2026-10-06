@@ -21,7 +21,7 @@ public interface BrowseHistoryRepository extends BaseMapper<BrowseHistory> {
      */
     @Insert("""
         INSERT INTO browse_history (user_id, product_id, last_view_time)
-        VALUES (***REMOVED***{userId}, ***REMOVED***{productId}, NOW(3))
+        VALUES (#{userId}, #{productId}, NOW(3))
         ON DUPLICATE KEY UPDATE last_view_time = NOW(3)
         """)
     void upsertView(@Param("userId") Long userId, @Param("productId") Long productId);
@@ -37,19 +37,19 @@ public interface BrowseHistoryRepository extends BaseMapper<BrowseHistory> {
      */
     @Delete("""
         DELETE FROM browse_history
-        WHERE user_id = ***REMOVED***{userId}
+        WHERE user_id = #{userId}
           AND product_id NOT IN (
             SELECT product_id FROM (
               SELECT product_id FROM browse_history
-              WHERE user_id = ***REMOVED***{userId}
+              WHERE user_id = #{userId}
               ORDER BY last_view_time DESC, id DESC
-              LIMIT ***REMOVED***{keep}
+              LIMIT #{keep}
             ) t
           )
         """)
     int trimToRecent(@Param("userId") Long userId, @Param("keep") int keep);
 
     /** 清空指定用户的浏览历史 */
-    @Delete("DELETE FROM browse_history WHERE user_id = ***REMOVED***{userId}")
+    @Delete("DELETE FROM browse_history WHERE user_id = #{userId}")
     int deleteByUserId(@Param("userId") Long userId);
 }

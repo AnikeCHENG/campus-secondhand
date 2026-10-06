@@ -8,6 +8,6 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface ShareRecordRepository extends BaseMapper<ShareRecord> {
-    @Select("SELECT COUNT(*) FROM share_record WHERE post_id = ***REMOVED***{postId}")
+    @Select("SELECT COUNT(*) FROM share_record WHERE post_id = #{postId}")
     int countByPostId(@Param("postId") Long postId);
 }

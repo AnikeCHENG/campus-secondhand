@@ -44,7 +44,7 @@ defineProps({
   mode: { type: String, default: 'fixed' }, // 'fixed' | 'section'
   toggle: { type: Boolean, default: true },
   overlay: { type: Boolean, default: true },
-  overlayColor: { type: String, default: '***REMOVED***0b1a16' },
+  overlayColor: { type: String, default: '#0b1a16' },
   overlayOpacity: { type: Number, default: 0.4 }
 })
 
@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .video-bg {
   overflow: hidden;
-  background: ***REMOVED***0b1a16;
+  background: #0b1a16;
   background-image: v-bind('`url(${poster})`');
   background-size: cover;
   background-position: center;
@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(8px);
-  color: ***REMOVED***fff;
+  color: #fff;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }

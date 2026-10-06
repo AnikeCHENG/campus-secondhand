@@ -3,7 +3,7 @@ import json
 
 BASE_URL = "http://localhost:8080/api/auth"
 
-***REMOVED*** Test registration with a new user
+# Test registration with a new user
 def test_register():
     url = f"{BASE_URL}/register"
     data = {

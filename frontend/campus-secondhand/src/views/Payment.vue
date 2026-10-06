@@ -302,9 +302,9 @@ let timer = null
 
 // 品牌色仅用于支付方式图标识别，不参与界面配色体系
 const methods = [
-  { value: 'alipay', label: '支付宝', glyph: '支', color: '***REMOVED***1677ff' },
-  { value: 'wechat', label: '微信支付', glyph: '微', color: '***REMOVED***07c160' },
-  { value: 'balance', label: '余额', glyph: '¥', color: '***REMOVED***0b6e54' }
+  { value: 'alipay', label: '支付宝', glyph: '支', color: '#1677ff' },
+  { value: 'wechat', label: '微信支付', glyph: '微', color: '#07c160' },
+  { value: 'balance', label: '余额', glyph: '¥', color: '#0b6e54' }
 ]
 
 const countdownText = computed(() => {
@@ -542,7 +542,7 @@ onBeforeUnmount(() => clearInterval(timer))
   color: var(--text-2);
   margin-bottom: var(--space-2);
 }
-/* 44px 大字：***REMOVED***b07d12 在白卡上 3.63:1，满足 WCAG AA 大字(≥24px)标准 */
+/* 44px 大字：#b07d12 在白卡上 3.63:1，满足 WCAG AA 大字(≥24px)标准 */
 .hero-amount {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -666,7 +666,7 @@ onBeforeUnmount(() => clearInterval(timer))
   width: 34px;
   height: 34px;
   border-radius: var(--radius-full);
-  color: ***REMOVED***fff;
+  color: #fff;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
 }

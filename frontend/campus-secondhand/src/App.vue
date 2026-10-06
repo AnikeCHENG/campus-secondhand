@@ -27,7 +27,7 @@ watch(
 </template>
 
 <style>
-html, body, ***REMOVED***app {
+html, body, #app {
   height: 100%;
   margin: 0;
 }

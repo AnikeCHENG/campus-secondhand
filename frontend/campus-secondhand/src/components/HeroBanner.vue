@@ -13,7 +13,7 @@
             class="search-input"
             @keyup.enter="onSearch"
           >
-            <template ***REMOVED***append>
+            <template #append>
               <el-button type="primary" @click="onSearch">搜索</el-button>
             </template>
           </el-input>

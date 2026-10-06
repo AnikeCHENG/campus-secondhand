@@ -127,7 +127,7 @@ onMounted(() => { drafts.value = JSON.parse(localStorage.getItem('product_drafts
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
 .brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: ***REMOVED***fff; }
+.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 .main-nav { display: flex; gap: var(--space-1); flex: 1; }
@@ -152,7 +152,7 @@ onMounted(() => { drafts.value = JSON.parse(localStorage.getItem('product_drafts
 .draft-image img { width: 100%; height: 100%; object-fit: cover; }
 .draft-image.placeholder { display: flex; align-items: center; justify-content: center; color: var(--text-3); }
 .draft-image.placeholder svg { width: 40px; height: 40px; }
-.image-count { position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; background: rgba(0,0,0,0.6); color: ***REMOVED***fff; border-radius: var(--radius-full); font-size: var(--text-xs); }
+.image-count { position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; background: rgba(0,0,0,0.6); color: #fff; border-radius: var(--radius-full); font-size: var(--text-xs); }
 .draft-info { padding: var(--space-4); }
 .draft-title { font-size: var(--text-base); font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .draft-meta { display: flex; gap: var(--space-2); margin: var(--space-3) 0; }

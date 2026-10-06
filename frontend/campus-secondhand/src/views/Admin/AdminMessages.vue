@@ -15,7 +15,7 @@
     <div class="message-list">
       <div class="message-item" v-for="message in messages" :key="message.id">
         <div class="message-header">
-          <h3>消息 ***REMOVED***{{ message.id }}</h3>
+          <h3>消息 #{{ message.id }}</h3>
           <span class="message-date">{{ formatDate(message.createdAt) }}</span>
         </div>
         <div class="message-info">
@@ -152,7 +152,7 @@ onMounted(() => {
 
 .admin-messages h1 {
   font-size: 2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 30px;
 }
 
@@ -165,14 +165,14 @@ onMounted(() => {
 .search-input {
   flex: 1;
   padding: 10px;
-  border: 1px solid ***REMOVED***ddd;
+  border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 16px;
 }
 
 .search-btn {
   padding: 10px 20px;
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -181,7 +181,7 @@ onMounted(() => {
 }
 
 .search-btn:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 
 .message-list {
@@ -191,7 +191,7 @@ onMounted(() => {
 }
 
 .message-item {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -206,13 +206,13 @@ onMounted(() => {
 
 .message-header h3 {
   font-size: 1.2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin: 0;
 }
 
 .message-date {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
 }
 
 .message-info {
@@ -221,7 +221,7 @@ onMounted(() => {
 
 .message-info p {
   margin: 5px 0;
-  color: ***REMOVED***666;
+  color: #666;
 }
 
 .message-actions {
@@ -231,7 +231,7 @@ onMounted(() => {
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: ***REMOVED***f44336;
+  background-color: #f44336;
   color: white;
   border: none;
   border-radius: 5px;
@@ -240,7 +240,7 @@ onMounted(() => {
 }
 
 .btn-danger:hover {
-  background-color: ***REMOVED***da190b;
+  background-color: #da190b;
 }
 
 /* 分页样式 */
@@ -251,13 +251,13 @@ onMounted(() => {
   gap: 10px;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid ***REMOVED***eee;
+  border-top: 1px solid #eee;
 }
 
 .pagination-button {
   padding: 8px 16px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -266,7 +266,7 @@ onMounted(() => {
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -277,14 +277,14 @@ onMounted(() => {
 
 .pagination-info {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
   font-weight: 500;
 }
 
 .no-messages {
   text-align: center;
   padding: 50px;
-  color: ***REMOVED***999;
+  color: #999;
   font-size: 1.2rem;
 }
 </style>
@@ -296,7 +296,7 @@ onMounted(() => {
 .message-search { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); }
 .search-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: var(--text-base); color: var(--text); background: var(--surface); }
 .search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.search-btn { padding: 10px 20px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
+.search-btn { padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
 .search-btn:hover { background: var(--accent-hover); }
 .message-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .message-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: none; }
@@ -304,7 +304,7 @@ onMounted(() => {
 .message-date { font-size: var(--text-sm); color: var(--text-2); }
 .message-info p { margin: 4px 0; color: var(--text-2); font-size: var(--text-sm); }
 .btn-danger { padding: 7px 16px; background: var(--danger-soft); color: var(--danger); border: none; border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.btn-danger:hover { background: var(--danger); color: ***REMOVED***fff; }
+.btn-danger:hover { background: var(--danger); color: #fff; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .pagination-button { padding: 6px 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }
 .pagination-button:hover:not(:disabled) { background: var(--surface-2); transform: none; }

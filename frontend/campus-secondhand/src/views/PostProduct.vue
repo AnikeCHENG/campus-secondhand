@@ -274,7 +274,7 @@ onMounted(() => {
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
 .brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: ***REMOVED***fff; }
+.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 .main-nav { display: flex; gap: var(--space-1); flex: 1; }
@@ -307,7 +307,7 @@ onMounted(() => {
 .image-upload { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .uploaded-image { position: relative; width: 96px; height: 96px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
 .uploaded-image img { width: 100%; height: 100%; object-fit: cover; }
-.remove-image { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); border: none; border-radius: var(--radius-full); color: ***REMOVED***fff; }
+.remove-image { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); border: none; border-radius: var(--radius-full); color: #fff; }
 .remove-image svg { width: 13px; height: 13px; }
 .remove-image:hover { background: var(--danger); }
 .upload-button { width: 96px; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--border-strong); border-radius: var(--radius); cursor: pointer; color: var(--text-3); transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }

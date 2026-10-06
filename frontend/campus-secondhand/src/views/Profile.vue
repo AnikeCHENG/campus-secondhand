@@ -12,11 +12,11 @@
           <svg class="header-logo" viewBox="0 0 40 40">
             <defs>
               <linearGradient id="headerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:***REMOVED***10b981"/>
-                <stop offset="100%" style="stop-color:***REMOVED***3b82f6"/>
+                <stop offset="0%" style="stop-color:#10b981"/>
+                <stop offset="100%" style="stop-color:#3b82f6"/>
               </linearGradient>
             </defs>
-            <circle cx="20" cy="20" r="18" fill="url(***REMOVED***headerLogoGrad)"/>
+            <circle cx="20" cy="20" r="18" fill="url(#headerLogoGrad)"/>
             <path d="M13 20 L18 24 L27 16" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span class="brand-name">废旧物品再利用平台</span>
@@ -417,17 +417,17 @@
         <div class="footer-section">
           <h4>快速链接</h4>
           <div class="footer-links">
-            <a href="***REMOVED***" @click.prevent="go('/')">首页</a>
-            <a href="***REMOVED***" @click.prevent="go('/products')">商品列表</a>
-            <a href="***REMOVED***" @click.prevent="go('/post')">发布商品</a>
+            <a href="#" @click.prevent="go('/')">首页</a>
+            <a href="#" @click.prevent="go('/products')">商品列表</a>
+            <a href="#" @click.prevent="go('/post')">发布商品</a>
           </div>
         </div>
         <div class="footer-section">
           <h4>帮助中心</h4>
           <div class="footer-links">
-            <a href="***REMOVED***">常见问题</a>
-            <a href="***REMOVED***">交易指南</a>
-            <a href="***REMOVED***">联系我们</a>
+            <a href="#">常见问题</a>
+            <a href="#">交易指南</a>
+            <a href="#">联系我们</a>
           </div>
         </div>
       </div>
@@ -1172,7 +1172,7 @@ onMounted(() => {
 <style scoped>
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, ***REMOVED***0f0f23 0%, ***REMOVED***1a1a3e 50%, ***REMOVED***2d1b4e 100%);
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b4e 100%);
   position: relative;
   overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1196,7 +1196,7 @@ onMounted(() => {
 .sphere-1 {
   width: 600px;
   height: 600px;
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***3b82f6);
+  background: linear-gradient(135deg, #10b981, #3b82f6);
   top: -300px;
   right: -200px;
 }
@@ -1204,7 +1204,7 @@ onMounted(() => {
 .sphere-2 {
   width: 500px;
   height: 500px;
-  background: linear-gradient(135deg, ***REMOVED***8b5cf6, ***REMOVED***ec4899);
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
   bottom: -200px;
   left: -200px;
   animation-delay: -8s;
@@ -1213,7 +1213,7 @@ onMounted(() => {
 .sphere-3 {
   width: 400px;
   height: 400px;
-  background: linear-gradient(135deg, ***REMOVED***f59e0b, ***REMOVED***ef4444);
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
   top: 40%;
   left: 30%;
   animation-delay: -16s;
@@ -1261,7 +1261,7 @@ onMounted(() => {
 .brand-name {
   font-size: 22px;
   font-weight: 700;
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***3b82f6);
+  background: linear-gradient(135deg, #10b981, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1284,12 +1284,12 @@ onMounted(() => {
 }
 
 .nav-link:hover {
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   background: rgba(255, 255, 255, 0.1);
 }
 
 .nav-link.active {
-  color: ***REMOVED***10b981;
+  color: #10b981;
   background: rgba(16, 185, 129, 0.15);
 }
 
@@ -1376,7 +1376,7 @@ onMounted(() => {
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***3b82f6, ***REMOVED***8b5cf6);
+  background: linear-gradient(135deg, #10b981, #3b82f6, #8b5cf6);
   animation: rotate 4s linear infinite;
 }
 
@@ -1408,12 +1408,12 @@ onMounted(() => {
 
 .badge.verified {
   background: rgba(16, 185, 129, 0.2);
-  color: ***REMOVED***10b981;
+  color: #10b981;
 }
 
 .badge.level {
   background: rgba(245, 158, 11, 0.2);
-  color: ***REMOVED***f59e0b;
+  color: #f59e0b;
 }
 
 .user-info {
@@ -1423,7 +1423,7 @@ onMounted(() => {
 .user-name {
   font-size: 28px;
   font-weight: 700;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
 }
 
@@ -1464,7 +1464,7 @@ onMounted(() => {
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
 }
 
 .stat-label {
@@ -1499,7 +1499,7 @@ onMounted(() => {
 }
 
 .action-btn-primary {
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***059669);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   border: none;
 }
@@ -1563,7 +1563,7 @@ onMounted(() => {
 }
 
 .tab-btn.active {
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***059669);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
 }
 
@@ -1641,7 +1641,7 @@ onMounted(() => {
 .listing-title {
   font-size: 16px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1658,7 +1658,7 @@ onMounted(() => {
 .listing-price {
   font-size: 20px;
   font-weight: 700;
-  color: ***REMOVED***10b981;
+  color: #10b981;
 }
 
 .listing-views {
@@ -1690,12 +1690,12 @@ onMounted(() => {
 
 .listing-btn.edit {
   background: rgba(59, 130, 246, 0.2);
-  color: ***REMOVED***3b82f6;
+  color: #3b82f6;
 }
 
 .listing-btn.delete {
   background: rgba(239, 68, 68, 0.2);
-  color: ***REMOVED***ef4444;
+  color: #ef4444;
 }
 
 .listing-btn:hover {
@@ -1748,7 +1748,7 @@ onMounted(() => {
 .favorite-title {
   font-size: 15px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 6px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1758,7 +1758,7 @@ onMounted(() => {
 .favorite-price {
   font-size: 18px;
   font-weight: 700;
-  color: ***REMOVED***10b981;
+  color: #10b981;
   margin-bottom: 6px;
 }
 
@@ -1778,7 +1778,7 @@ onMounted(() => {
   border-radius: 50%;
   border: none;
   background: rgba(239, 68, 68, 0.2);
-  color: ***REMOVED***ef4444;
+  color: #ef4444;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1843,12 +1843,12 @@ onMounted(() => {
 
 .order-status.pending {
   background: rgba(245, 158, 11, 0.2);
-  color: ***REMOVED***f59e0b;
+  color: #f59e0b;
 }
 
 .order-status.completed {
   background: rgba(16, 185, 129, 0.2);
-  color: ***REMOVED***10b981;
+  color: #10b981;
 }
 
 .order-content {
@@ -1879,7 +1879,7 @@ onMounted(() => {
 .order-title {
   font-size: 16px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1898,7 +1898,7 @@ onMounted(() => {
 .order-price {
   font-size: 22px;
   font-weight: 700;
-  color: ***REMOVED***10b981;
+  color: #10b981;
   margin-bottom: 12px;
 }
 
@@ -1918,7 +1918,7 @@ onMounted(() => {
 }
 
 .order-btn.primary {
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***059669);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
 }
 
@@ -1929,7 +1929,7 @@ onMounted(() => {
 }
 
 .order-btn.danger {
-  background: linear-gradient(135deg, ***REMOVED***ef4444, ***REMOVED***dc2626);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
 }
 
@@ -1985,7 +1985,7 @@ onMounted(() => {
 .history-title {
   font-size: 14px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -2001,7 +2001,7 @@ onMounted(() => {
 .history-price {
   font-size: 16px;
   font-weight: 700;
-  color: ***REMOVED***10b981;
+  color: #10b981;
 }
 
 .history-time {
@@ -2084,7 +2084,7 @@ onMounted(() => {
 .draft-title {
   font-size: 16px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
 }
 
@@ -2105,7 +2105,7 @@ onMounted(() => {
 .draft-price {
   font-size: 18px;
   font-weight: 700;
-  color: ***REMOVED***10b981;
+  color: #10b981;
   margin-bottom: 4px;
 }
 
@@ -2136,12 +2136,12 @@ onMounted(() => {
 
 .draft-btn.edit {
   background: rgba(59, 130, 246, 0.2);
-  color: ***REMOVED***3b82f6;
+  color: #3b82f6;
 }
 
 .draft-btn.delete {
   background: rgba(239, 68, 68, 0.2);
-  color: ***REMOVED***ef4444;
+  color: #ef4444;
 }
 
 .draft-btn:hover {
@@ -2173,7 +2173,7 @@ onMounted(() => {
 .empty-state h3 {
   font-size: 20px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 8px 0;
 }
 
@@ -2185,7 +2185,7 @@ onMounted(() => {
 
 .empty-btn {
   padding: 12px 28px;
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***059669);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   border: none;
   border-radius: 12px;
@@ -2220,7 +2220,7 @@ onMounted(() => {
 .footer-section h4 {
   font-size: 16px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0 0 16px 0;
 }
 
@@ -2239,7 +2239,7 @@ onMounted(() => {
 .footer-logo span {
   font-size: 20px;
   font-weight: 700;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
 }
 
 .footer-desc {
@@ -2263,7 +2263,7 @@ onMounted(() => {
 }
 
 .footer-links a:hover {
-  color: ***REMOVED***10b981;
+  color: #10b981;
 }
 
 .footer-bottom {
@@ -2314,7 +2314,7 @@ onMounted(() => {
 .modal-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -2334,7 +2334,7 @@ onMounted(() => {
 
 .close-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
 }
 
 .close-btn svg {
@@ -2432,7 +2432,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  color: ***REMOVED***ffffff;
+  color: #ffffff;
   font-size: 15px;
   outline: none;
   transition: all 0.3s ease;
@@ -2441,7 +2441,7 @@ onMounted(() => {
 
 .form-group input:focus,
 .form-group textarea:focus {
-  border-color: ***REMOVED***10b981;
+  border-color: #10b981;
   background: rgba(16, 185, 129, 0.05);
 }
 
@@ -2486,7 +2486,7 @@ onMounted(() => {
 }
 
 .btn-save {
-  background: linear-gradient(135deg, ***REMOVED***10b981, ***REMOVED***059669);
+  background: linear-gradient(135deg, #10b981, #059669);
   color: white;
   border: none;
   display: flex;
@@ -2679,7 +2679,7 @@ onMounted(() => {
 .stat-label { color: var(--text-2); }
 .stat-divider { background: var(--border); }
 
-.action-btn-primary { background: var(--accent); color: ***REMOVED***fff; border-radius: var(--radius); font-weight: var(--weight-medium); }
+.action-btn-primary { background: var(--accent); color: #fff; border-radius: var(--radius); font-weight: var(--weight-medium); }
 .action-btn-primary:hover { background: var(--accent-hover); box-shadow: none; transform: none; }
 .action-btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius); font-weight: var(--weight-medium); }
 .action-btn-secondary:hover { background: var(--surface-2); }
@@ -2687,9 +2687,9 @@ onMounted(() => {
 .profile-tabs { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2); gap: var(--space-2); }
 .tab-btn { color: var(--text-2); border-radius: var(--radius-sm); font-weight: var(--weight-medium); }
 .tab-btn:hover { color: var(--text); background: var(--surface-2); }
-.tab-btn.active { background: var(--accent); color: ***REMOVED***fff; }
+.tab-btn.active { background: var(--accent); color: #fff; }
 .tab-count { background: var(--surface-3); color: var(--text-2); }
-.tab-btn.active .tab-count { background: rgba(255,255,255,0.25); color: ***REMOVED***fff; }
+.tab-btn.active .tab-count { background: rgba(255,255,255,0.25); color: #fff; }
 
 .listing-card, .favorite-card, .order-card, .history-card, .draft-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: none; }
 .listing-card:hover, .history-card:hover, .draft-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: none; }
@@ -2706,10 +2706,10 @@ onMounted(() => {
 .order-status.pending { background: var(--warning-soft); color: var(--warning); }
 .order-status.completed { background: var(--success-soft); color: var(--success); }
 .order-status.cancelled { background: var(--danger-soft); color: var(--danger); }
-.order-btn.primary, .empty-btn { background: var(--accent); color: ***REMOVED***fff; border-radius: var(--radius-sm); }
+.order-btn.primary, .empty-btn { background: var(--accent); color: #fff; border-radius: var(--radius-sm); }
 .order-btn.primary:hover, .empty-btn:hover { background: var(--accent-hover); box-shadow: none; transform: none; }
 .order-btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
-.order-btn.danger { background: var(--danger); color: ***REMOVED***fff; }
+.order-btn.danger { background: var(--danger); color: #fff; }
 .order-btn:hover { transform: none; }
 .draft-category, .draft-condition { background: var(--surface-3); color: var(--text-2); }
 .draft-btn.edit { background: var(--info-soft); color: var(--info); }
@@ -2734,7 +2734,7 @@ onMounted(() => {
 .form-group input, .form-group textarea { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); border-radius: var(--radius); }
 .modal-footer { border-top: 1px solid var(--border); }
 .btn-cancel { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); }
-.btn-save { background: var(--accent); color: ***REMOVED***fff; }
+.btn-save { background: var(--accent); color: #fff; }
 
 /* ============ 收藏 / 浏览历史 真实数据样式 ============ */
 /* 已售出/已下架/已删除：置灰但保留可见，让用户知道商品发生过什么 */
@@ -2750,7 +2750,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   min-height: 96px;
-  color: ***REMOVED***9a9a92;
+  color: #9a9a92;
 }
 .favorite-noimg svg,
 .history-noimg svg { width: 32px; height: 32px; }
@@ -2761,11 +2761,11 @@ onMounted(() => {
   padding: 2px 8px;
   font-size: 12px;
   font-weight: 500;
-  color: ***REMOVED***fff;
-  background: ***REMOVED***6b6b64;
+  color: #fff;
+  background: #6b6b64;
   border-radius: 999px;
 }
-.corner-badge.sold { background: ***REMOVED***c0392b; }
+.corner-badge.sold { background: #c0392b; }
 .history-toolbar {
   display: flex;
   align-items: center;
@@ -2773,30 +2773,30 @@ onMounted(() => {
   gap: 12px;
   margin-bottom: 12px;
 }
-.history-count { font-size: 13px; color: ***REMOVED***9a9a92; }
+.history-count { font-size: 13px; color: #9a9a92; }
 .history-clear {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
   font-size: 13px;
-  color: ***REMOVED***6b6b64;
+  color: #6b6b64;
   background: transparent;
-  border: 1px solid ***REMOVED***d8d8d2;
+  border: 1px solid #d8d8d2;
   border-radius: 8px;
   cursor: pointer;
   transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
 }
 .history-clear svg { width: 14px; height: 14px; }
 .history-clear:hover {
-  color: ***REMOVED***c0392b;
-  border-color: ***REMOVED***c0392b;
+  color: #c0392b;
+  border-color: #c0392b;
   background: rgba(192, 57, 43, 0.06);
 }
 .history-tag {
   padding: 1px 6px;
   font-size: 12px;
-  color: ***REMOVED***c0392b;
+  color: #c0392b;
   background: rgba(192, 57, 43, 0.1);
   border-radius: 4px;
 }</style>

@@ -56,7 +56,7 @@
           </button>
 
           <div v-if="post.tags.length" class="tags">
-            <span v-for="tag in post.tags" :key="tag">***REMOVED***{{ tag }}</span>
+            <span v-for="tag in post.tags" :key="tag">#{{ tag }}</span>
           </div>
 
           <div v-if="post.images.length" class="feed-images" :class="imageGridClass(post.images.length)">
@@ -100,7 +100,7 @@
       <aside class="plaza-right">
         <section class="card">
           <h3>热门话题</h3>
-          <a v-for="topic in hotTopics" :key="topic" href="javascript:void 0">***REMOVED***{{ topic }}</a>
+          <a v-for="topic in hotTopics" :key="topic" href="javascript:void 0">#{{ topic }}</a>
         </section>
 
         <section class="card">
@@ -271,8 +271,8 @@ async function onShare(post) {
   --surface: rgba(18, 18, 20, 0.78);
   --surface-2: rgba(255, 255, 255, 0.06);
   --border: rgba(255, 255, 255, 0.09);
-  --text: ***REMOVED***f5f5f4;
-  --text-2: ***REMOVED***a8a29e;
+  --text: #f5f5f4;
+  --text-2: #a8a29e;
   min-height: 100vh;
   color: var(--text);
 }
@@ -339,8 +339,8 @@ async function onShare(post) {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: linear-gradient(135deg, ***REMOVED***2dd4bf, ***REMOVED***64748b);
-  color: ***REMOVED***111;
+  background: linear-gradient(135deg, #2dd4bf, #64748b);
+  color: #111;
   font-weight: 700;
 }
 .avatar-lg { width: 72px; height: 72px; margin: 0 auto; font-size: 24px; }
@@ -372,8 +372,8 @@ async function onShare(post) {
 .plaza-post-btn, .feed-composer button {
   width: 100%;
   padding: 12px 16px;
-  background: ***REMOVED***f5f5f4;
-  color: ***REMOVED***111;
+  background: #f5f5f4;
+  color: #111;
   font-weight: 700;
 }
 
@@ -384,7 +384,7 @@ async function onShare(post) {
   background: var(--surface-2);
   color: var(--text);
 }
-.plaza-filter button.active { background: ***REMOVED***f5f5f4; color: ***REMOVED***111; }
+.plaza-filter button.active { background: #f5f5f4; color: #111; }
 
 .feed-composer { padding: 16px; }
 .feed-card { padding: 16px; transition: transform .3s cubic-bezier(.25,.8,.25,1), box-shadow .3s ease; }
@@ -413,7 +413,7 @@ async function onShare(post) {
 .expand-btn {
   border: 0;
   background: transparent;
-  color: ***REMOVED***7dd3fc;
+  color: #7dd3fc;
   cursor: pointer;
   padding: 4px 0;
 }
@@ -428,7 +428,7 @@ async function onShare(post) {
 .feed-images { display: grid; gap: 8px; margin: 12px 0; }
 .image-item { position: relative; overflow: hidden; border-radius: 12px; }
 .image-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; transition: transform .4s ease; }
-.image-item span { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.38); color: ***REMOVED***fff; opacity: 0; transition: opacity .25s ease; }
+.image-item span { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.38); color: #fff; opacity: 0; transition: opacity .25s ease; }
 .image-item:hover img { transform: scale(1.08); }
 .image-item:hover span { opacity: 1; }
 .feed-images.grid-1 .image-item { height: 320px; }
@@ -436,7 +436,7 @@ async function onShare(post) {
 .feed-images.grid-2 .image-item { aspect-ratio: 1 / 1; }
 .feed-images.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .feed-images.grid-3 .image-item { aspect-ratio: 1 / 1; }
-.price-row { color: ***REMOVED***fca5a5; font-weight: 700; margin: 12px 0; }
+.price-row { color: #fca5a5; font-weight: 700; margin: 12px 0; }
 .feed-actions {
   display: flex;
   gap: 16px;
@@ -453,8 +453,8 @@ async function onShare(post) {
 .comment-item small { color: var(--text-2); font-size: 12px; }
 .comment-input { display: flex; gap: 8px; }
 .comment-input input { flex: 1; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.08); color: var(--text); outline: none; }
-.comment-input button { border: 0; border-radius: 999px; padding: 8px 14px; background: ***REMOVED***f5f5f4; color: ***REMOVED***111; cursor: pointer; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,.75); color: ***REMOVED***fff; z-index: 10000; }
+.comment-input button { border: 0; border-radius: 999px; padding: 8px 14px; background: #f5f5f4; color: #111; cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,.75); color: #fff; z-index: 10000; }
 .like-pop { animation: pop .3s ease; }
 @keyframes pop { 50% { transform: scale(1.25); } }
 .card h3 { margin-top: 0; }

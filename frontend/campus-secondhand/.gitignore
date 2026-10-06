@@ -1,4 +1,4 @@
-***REMOVED*** Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -14,7 +14,7 @@ dist-ssr
 coverage
 *.local
 
-***REMOVED*** Editor directories and files
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -28,9 +28,9 @@ coverage
 
 .eslintcache
 
-***REMOVED*** Cypress
+# Cypress
 /cypress/videos/
 /cypress/screenshots/
 
-***REMOVED*** Vitest
+# Vitest
 __screenshots__/

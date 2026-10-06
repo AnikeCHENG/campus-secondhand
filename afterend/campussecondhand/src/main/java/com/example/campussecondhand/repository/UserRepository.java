@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Mapper
 public interface UserRepository extends BaseMapper<User> {
-    @Select("SELECT * FROM users WHERE username = ***REMOVED***{username}")
+    @Select("SELECT * FROM users WHERE username = #{username}")
     Optional<User> findByUsername(@Param("username") String username);
 }
 

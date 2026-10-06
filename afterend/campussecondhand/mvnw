@@ -1,38 +1,38 @@
-***REMOVED***!/bin/sh
-***REMOVED*** ----------------------------------------------------------------------------
-***REMOVED*** Licensed to the Apache Software Foundation (ASF) under one
-***REMOVED*** or more contributor license agreements.  See the NOTICE file
-***REMOVED*** distributed with this work for additional information
-***REMOVED*** regarding copyright ownership.  The ASF licenses this file
-***REMOVED*** to you under the Apache License, Version 2.0 (the
-***REMOVED*** "License"); you may not use this file except in compliance
-***REMOVED*** with the License.  You may obtain a copy of the License at
-***REMOVED***
-***REMOVED***    http://www.apache.org/licenses/LICENSE-2.0
-***REMOVED***
-***REMOVED*** Unless required by applicable law or agreed to in writing,
-***REMOVED*** software distributed under the License is distributed on an
-***REMOVED*** "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-***REMOVED*** KIND, either express or implied.  See the License for the
-***REMOVED*** specific language governing permissions and limitations
-***REMOVED*** under the License.
-***REMOVED*** ----------------------------------------------------------------------------
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# ----------------------------------------------------------------------------
 
-***REMOVED*** ----------------------------------------------------------------------------
-***REMOVED*** Apache Maven Wrapper startup batch script, version 3.3.4
-***REMOVED***
-***REMOVED*** Optional ENV vars
-***REMOVED*** -----------------
-***REMOVED***   JAVA_HOME - location of a JDK home dir, required when download maven via java source
-***REMOVED***   MVNW_REPOURL - repo url base for downloading maven distribution
-***REMOVED***   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-***REMOVED***   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
-***REMOVED*** ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Apache Maven Wrapper startup batch script, version 3.3.4
+#
+# Optional ENV vars
+# -----------------
+#   JAVA_HOME - location of a JDK home dir, required when download maven via java source
+#   MVNW_REPOURL - repo url base for downloading maven distribution
+#   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
+#   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
+# ----------------------------------------------------------------------------
 
 set -euf
 [ "${MVNW_VERBOSE-}" != debug ] || set -x
 
-***REMOVED*** OS specific support.
+# OS specific support.
 native_path() { printf %s\\n "$1"; }
 case "$(uname)" in
 CYGWIN* | MINGW*)
@@ -41,12 +41,12 @@ CYGWIN* | MINGW*)
   ;;
 esac
 
-***REMOVED*** set JAVACMD and JAVACCMD
+# set JAVACMD and JAVACCMD
 set_java_home() {
-  ***REMOVED*** For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
+  # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
   if [ -n "${JAVA_HOME-}" ]; then
     if [ -x "$JAVA_HOME/jre/sh/java" ]; then
-      ***REMOVED*** IBM's JDK on AIX uses strange locations for the executables
+      # IBM's JDK on AIX uses strange locations for the executables
       JAVACMD="$JAVA_HOME/jre/sh/java"
       JAVACCMD="$JAVA_HOME/jre/sh/javac"
     else
@@ -78,13 +78,13 @@ set_java_home() {
   fi
 }
 
-***REMOVED*** hash string like Java String::hashCode
+# hash string like Java String::hashCode
 hash_string() {
   str="${1:-}" h=0
   while [ -n "$str" ]; do
-    char="${str%"${str***REMOVED***?}"}"
+    char="${str%"${str#?}"}"
     h=$(((h * 31 + $(LC_CTYPE=C printf %d "'$char")) % 4294967296))
-    str="${str***REMOVED***?}"
+    str="${str#?}"
   done
   printf %x\\n $h
 }
@@ -98,17 +98,17 @@ die() {
 }
 
 trim() {
-  ***REMOVED*** MWRAPPER-139:
-  ***REMOVED***   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
-  ***REMOVED***   Needed for removing poorly interpreted newline sequences when running in more
-  ***REMOVED***   exotic environments such as mingw bash on Windows.
+  # MWRAPPER-139:
+  #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
+  #   Needed for removing poorly interpreted newline sequences when running in more
+  #   exotic environments such as mingw bash on Windows.
   printf "%s" "${1}" | tr -d '[:space:]'
 }
 
 scriptDir="$(dirname "$0")"
 scriptName="$(basename "$0")"
 
-***REMOVED*** parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
+# parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
 while IFS="=" read -r key value; do
   case "${key-}" in
   distributionUrl) distributionUrl=$(trim "${value-}") ;;
@@ -117,7 +117,7 @@ while IFS="=" read -r key value; do
 done <"$scriptDir/.mvn/wrapper/maven-wrapper.properties"
 [ -n "${distributionUrl-}" ] || die "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
 
-case "${distributionUrl***REMOVED******REMOVED****/}" in
+case "${distributionUrl##*/}" in
 maven-mvnd-*bin.*)
   MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/
   case "${PROCESSOR_ARCHITECTURE-}${PROCESSOR_ARCHITEW6432-}:$(uname -a)" in
@@ -133,13 +133,13 @@ maven-mvnd-*bin.*)
   distributionUrl="${distributionUrl%-bin.*}-$distributionPlatform.zip"
   ;;
 maven-mvnd-*) MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/ ;;
-*) MVN_CMD="mvn${scriptName***REMOVED***mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
+*) MVN_CMD="mvn${scriptName#mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
 esac
 
-***REMOVED*** apply MVNW_REPOURL and calculate MAVEN_HOME
-***REMOVED*** maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl***REMOVED****"$_MVNW_REPO_PATTERN"}"
-distributionUrlName="${distributionUrl***REMOVED******REMOVED****/}"
+# apply MVNW_REPOURL and calculate MAVEN_HOME
+# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
+[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl#*"$_MVNW_REPO_PATTERN"}"
+distributionUrlName="${distributionUrl##*/}"
 distributionUrlNameMain="${distributionUrlName%.*}"
 distributionUrlNameMain="${distributionUrlNameMain%-bin}"
 MAVEN_USER_HOME="${MAVEN_USER_HOME:-${HOME}/.m2}"
@@ -160,7 +160,7 @@ case "${distributionUrl-}" in
 *) die "distributionUrl is not valid, must match *-bin.zip or maven-mvnd-*.zip, but found '${distributionUrl-}'" ;;
 esac
 
-***REMOVED*** prepare tmp dir
+# prepare tmp dir
 if TMP_DOWNLOAD_DIR="$(mktemp -d)" && [ -d "$TMP_DOWNLOAD_DIR" ]; then
   clean() { rm -rf -- "$TMP_DOWNLOAD_DIR"; }
   trap clean HUP INT TERM EXIT
@@ -170,22 +170,22 @@ fi
 
 mkdir -p -- "${MAVEN_HOME%/*}"
 
-***REMOVED*** Download and Install Apache Maven
+# Download and Install Apache Maven
 verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
 verbose "Downloading from: $distributionUrl"
 verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
 
-***REMOVED*** select .zip or .tar.gz
+# select .zip or .tar.gz
 if ! command -v unzip >/dev/null; then
   distributionUrl="${distributionUrl%.zip}.tar.gz"
-  distributionUrlName="${distributionUrl***REMOVED******REMOVED****/}"
+  distributionUrlName="${distributionUrl##*/}"
 fi
 
-***REMOVED*** verbose opt
+# verbose opt
 __MVNW_QUIET_WGET=--quiet __MVNW_QUIET_CURL=--silent __MVNW_QUIET_UNZIP=-q __MVNW_QUIET_TAR=''
 [ "${MVNW_VERBOSE-}" != true ] || __MVNW_QUIET_WGET='' __MVNW_QUIET_CURL='' __MVNW_QUIET_UNZIP='' __MVNW_QUIET_TAR=v
 
-***REMOVED*** normalize http auth
+# normalize http auth
 case "${MVNW_PASSWORD:+has-password}" in
 '') MVNW_USERNAME='' MVNW_PASSWORD='' ;;
 has-password) [ -n "${MVNW_USERNAME-}" ] || MVNW_USERNAME='' MVNW_PASSWORD='' ;;
@@ -215,14 +215,14 @@ elif set_java_home; then
 	  }
 	}
 	END
-  ***REMOVED*** For Cygwin/MinGW, switch paths to Windows format before running javac and java
+  # For Cygwin/MinGW, switch paths to Windows format before running javac and java
   verbose " - Compiling Downloader.java ..."
   "$(native_path "$JAVACCMD")" "$(native_path "$javaSource")" || die "Failed to compile Downloader.java"
   verbose " - Running Downloader.java ..."
   "$(native_path "$JAVACMD")" -cp "$(native_path "$TMP_DOWNLOAD_DIR")" Downloader "$distributionUrl" "$(native_path "$targetZip")"
 fi
 
-***REMOVED*** If specified, validate the SHA-256 sum of the Maven distribution zip file
+# If specified, validate the SHA-256 sum of the Maven distribution zip file
 if [ -n "${distributionSha256Sum-}" ]; then
   distributionSha256Result=false
   if [ "$MVN_CMD" = mvnd.sh ]; then
@@ -249,26 +249,26 @@ if [ -n "${distributionSha256Sum-}" ]; then
   fi
 fi
 
-***REMOVED*** unzip and move
+# unzip and move
 if command -v unzip >/dev/null; then
   unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
 else
   tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
 fi
 
-***REMOVED*** Find the actual extracted directory name (handles snapshots where filename != directory name)
+# Find the actual extracted directory name (handles snapshots where filename != directory name)
 actualDistributionDir=""
 
-***REMOVED*** First try the expected directory name (for regular distributions)
+# First try the expected directory name (for regular distributions)
 if [ -d "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" ]; then
   if [ -f "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/bin/$MVN_CMD" ]; then
     actualDistributionDir="$distributionUrlNameMain"
   fi
 fi
 
-***REMOVED*** If not found, search for any directory with the Maven executable (for snapshots)
+# If not found, search for any directory with the Maven executable (for snapshots)
 if [ -z "$actualDistributionDir" ]; then
-  ***REMOVED*** enable globbing to iterate over items
+  # enable globbing to iterate over items
   set +f
   for dir in "$TMP_DOWNLOAD_DIR"/*; do
     if [ -d "$dir" ]; then

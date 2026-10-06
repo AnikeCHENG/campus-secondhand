@@ -1,37 +1,37 @@
-***REMOVED*** ============================================================
-***REMOVED*** 本地真实配置参考模板（复制本文件为 application-local.properties）
-***REMOVED***
-***REMOVED*** 复制命令：
-***REMOVED***   Copy-Item application-local.properties.example application-local.properties
-***REMOVED***
-***REMOVED*** application-local.properties 已在 .gitignore 中，不会被提交。
-***REMOVED*** 本文件仅在 local profile 激活时自动加载，启动命令需要：
-***REMOVED***   $env:SPRING_PROFILES_ACTIVE = "dev,local"
-***REMOVED***
-***REMOVED*** 注意：application.properties 中的 DB_PASSWORD / JWT_SECRET / MAIL_PASSWORD
-***REMOVED*** 已去掉默认值，未提供时应用会启动失败——这是刻意的，
-***REMOVED*** 目的是避免真实口令被连同默认值一起提交到公开仓库。
-***REMOVED*** ============================================================
+# ============================================================
+# 本地真实配置参考模板（复制本文件为 application-local.properties）
+#
+# 复制命令：
+#   Copy-Item application-local.properties.example application-local.properties
+#
+# application-local.properties 已在 .gitignore 中，不会被提交。
+# 本文件仅在 local profile 激活时自动加载，启动命令需要：
+#   $env:SPRING_PROFILES_ACTIVE = "dev,local"
+#
+# 注意：application.properties 中的 DB_PASSWORD / JWT_SECRET / MAIL_PASSWORD
+# 已去掉默认值，未提供时应用会启动失败——这是刻意的，
+# 目的是避免真实口令被连同默认值一起提交到公开仓库。
+# ============================================================
 
-***REMOVED*** ---- 数据库 ----
+# ---- 数据库 ----
 DB_USERNAME=root
 DB_PASSWORD=
 
-***REMOVED*** ---- Redis（默认值已在 application.properties 中，可不填）----
-***REMOVED*** REDIS_HOST=localhost
-***REMOVED*** REDIS_PORT=6379
+# ---- Redis（默认值已在 application.properties 中，可不填）----
+# REDIS_HOST=localhost
+# REDIS_PORT=6379
 
-***REMOVED*** ---- 邮件（SMTP 授权码）----
-***REMOVED*** QQ 邮箱：设置 -> POP3/SMTP/IMAP -> 开启 SMTP -> 生成授权码
-***REMOVED*** 163 邮箱：设置 -> POP3/SMTP/IMAP -> 开启 POP3/SMTP -> 生成客户端授权码
+# ---- 邮件（SMTP 授权码）----
+# QQ 邮箱：设置 -> POP3/SMTP/IMAP -> 开启 SMTP -> 生成授权码
+# 163 邮箱：设置 -> POP3/SMTP/IMAP -> 开启 POP3/SMTP -> 生成客户端授权码
 MAIL_HOST=smtp.qq.com
 MAIL_PORT=465
 MAIL_USERNAME=
 MAIL_PASSWORD=
 
-***REMOVED*** ---- JWT 签名密钥 ----
-***REMOVED*** HS512 要求密钥 >= 64 字节。请用随机数生成，不要沿用任何示例值：
-***REMOVED***   $b = New-Object byte[] 48
-***REMOVED***   [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
-***REMOVED***   [Convert]::ToBase64String($b)
+# ---- JWT 签名密钥 ----
+# HS512 要求密钥 >= 64 字节。请用随机数生成，不要沿用任何示例值：
+#   $b = New-Object byte[] 48
+#   [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+#   [Convert]::ToBase64String($b)
 JWT_SECRET=

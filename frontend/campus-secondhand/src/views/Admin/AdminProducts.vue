@@ -403,21 +403,21 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 32px;
   padding-bottom: 16px;
-  border-bottom: 1px solid ***REMOVED***e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .admin-header h1 {
   font-size: 24px;
   font-weight: 600;
-  color: ***REMOVED***333;
+  color: #333;
   margin: 0;
 }
 
 .back-link {
   text-decoration: none;
-  color: ***REMOVED***333;
+  color: #333;
   padding: 10px 16px;
-  background-color: ***REMOVED***f5f5f5;
+  background-color: #f5f5f5;
   border-radius: 8px;
   transition: all 0.3s ease;
   font-size: 14px;
@@ -425,7 +425,7 @@ onMounted(() => {
 }
 
 .back-link:hover {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -445,7 +445,7 @@ onMounted(() => {
   flex: 1;
   min-width: 200px;
   padding: 10px 16px;
-  border: 1px solid ***REMOVED***e0e0e0;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
@@ -453,13 +453,13 @@ onMounted(() => {
 
 .search-input:focus {
   outline: none;
-  border-color: ***REMOVED***10b981;
+  border-color: #10b981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .filter-select {
   padding: 10px 16px;
-  border: 1px solid ***REMOVED***e0e0e0;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
   background-color: white;
@@ -468,13 +468,13 @@ onMounted(() => {
 
 .filter-select:focus {
   outline: none;
-  border-color: ***REMOVED***10b981;
+  border-color: #10b981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 .search-button {
   padding: 10px 20px;
-  background-color: ***REMOVED***10b981;
+  background-color: #10b981;
   color: white;
   border: none;
   border-radius: 8px;
@@ -485,7 +485,7 @@ onMounted(() => {
 }
 
 .search-button:hover {
-  background-color: ***REMOVED***059669;
+  background-color: #059669;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
@@ -502,8 +502,8 @@ onMounted(() => {
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid ***REMOVED***f3f3f3;
-  border-top: 4px solid ***REMOVED***10b981;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #10b981;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -520,14 +520,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   padding: 60px 0;
-  color: ***REMOVED***ef4444;
+  color: #ef4444;
 }
 
 .retry-button {
   margin-top: 16px;
   padding: 8px 16px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -535,7 +535,7 @@ onMounted(() => {
 }
 
 .retry-button:hover {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
 }
 
 /* 商品表格 */
@@ -556,20 +556,20 @@ onMounted(() => {
 .products-table td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid ***REMOVED***f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .products-table th {
-  background-color: ***REMOVED***f9fafb;
+  background-color: #f9fafb;
   font-weight: 600;
-  color: ***REMOVED***333;
+  color: #333;
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .products-table tr:hover {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
 }
 
 .product-title {
@@ -591,17 +591,17 @@ onMounted(() => {
 
 .status-available {
   background-color: rgba(16, 185, 129, 0.1);
-  color: ***REMOVED***059669;
+  color: #059669;
 }
 
 .status-sold {
   background-color: rgba(59, 130, 246, 0.1);
-  color: ***REMOVED***1d4ed8;
+  color: #1d4ed8;
 }
 
 .status-offline {
   background-color: rgba(107, 114, 128, 0.1);
-  color: ***REMOVED***4b5563;
+  color: #4b5563;
 }
 
 /* 操作按钮 */
@@ -623,30 +623,30 @@ onMounted(() => {
 }
 
 .view-button {
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .view-button:hover {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
 }
 
 .action上架 {
-  background-color: ***REMOVED***10b981;
+  background-color: #10b981;
   color: white;
 }
 
 .action上架:hover {
-  background-color: ***REMOVED***059669;
+  background-color: #059669;
 }
 
 .action下架 {
-  background-color: ***REMOVED***ef4444;
+  background-color: #ef4444;
   color: white;
 }
 
 .action下架:hover {
-  background-color: ***REMOVED***dc2626;
+  background-color: #dc2626;
 }
 
 /* 分页 */
@@ -657,13 +657,13 @@ onMounted(() => {
   gap: 12px;
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid ***REMOVED***e0e0e0;
+  border-top: 1px solid #e0e0e0;
 }
 
 .pagination-button {
   padding: 8px 16px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -673,7 +673,7 @@ onMounted(() => {
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -684,7 +684,7 @@ onMounted(() => {
 
 .pagination-info {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
   font-weight: 500;
 }
 
@@ -717,13 +717,13 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid ***REMOVED***e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .modal-header h2 {
   font-size: 20px;
   font-weight: 600;
-  color: ***REMOVED***333;
+  color: #333;
   margin: 0;
 }
 
@@ -732,7 +732,7 @@ onMounted(() => {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: ***REMOVED***666;
+  color: #666;
   padding: 0;
   width: 32px;
   height: 32px;
@@ -744,8 +744,8 @@ onMounted(() => {
 }
 
 .close-button:hover {
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .modal-body {
@@ -766,28 +766,28 @@ onMounted(() => {
 
 .detail-label {
   font-weight: 600;
-  color: ***REMOVED***333;
+  color: #333;
   min-width: 100px;
   flex-shrink: 0;
 }
 
 .detail-value {
   flex: 1;
-  color: ***REMOVED***666;
+  color: #666;
   line-height: 1.5;
 }
 
 .modal-footer {
   padding: 20px 24px;
-  border-top: 1px solid ***REMOVED***e0e0e0;
+  border-top: 1px solid #e0e0e0;
   display: flex;
   justify-content: flex-end;
 }
 
 .close-modal-button {
   padding: 10px 20px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -797,7 +797,7 @@ onMounted(() => {
 }
 
 .close-modal-button:hover {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -857,7 +857,7 @@ onMounted(() => {
 .filter-form { gap: var(--space-3); }
 .search-input, .filter-select { padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: var(--text-base); color: var(--text); background: var(--surface); }
 .search-input:focus, .filter-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.search-button { padding: 10px 20px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
+.search-button { padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
 .search-button:hover { background: var(--accent-hover); transform: none; box-shadow: none; }
 
 .products-table-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: none; }
@@ -879,9 +879,9 @@ onMounted(() => {
 .view-button { background: var(--surface-3); color: var(--text); }
 .view-button:hover { background: var(--surface-2); }
 .action上架 { background: var(--accent-soft); color: var(--accent); }
-.action上架:hover { background: var(--accent); color: ***REMOVED***fff; }
+.action上架:hover { background: var(--accent); color: #fff; }
 .action下架 { background: var(--danger-soft); color: var(--danger); }
-.action下架:hover { background: var(--danger); color: ***REMOVED***fff; }
+.action下架:hover { background: var(--danger); color: #fff; }
 
 .pagination { border-top: 1px solid var(--border); }
 .pagination-button { padding: 6px 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }

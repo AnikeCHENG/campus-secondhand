@@ -331,9 +331,9 @@
           </div>
           <div class="footer-col">
             <h4>帮助中心</h4>
-            <a href="***REMOVED***">常见问题</a>
-            <a href="***REMOVED***">交易指南</a>
-            <a href="***REMOVED***">联系我们</a>
+            <a href="#">常见问题</a>
+            <a href="#">交易指南</a>
+            <a href="#">联系我们</a>
           </div>
         </div>
       </div>
@@ -580,9 +580,9 @@ async function handleLogout() {
 }
 
 const cards = ref([
-  { title: '待售商品', value: 0, icon: 'shopping', color: '***REMOVED***ff7a45' },
-  { title: '待处理订单', value: 0, icon: 'order', color: '***REMOVED***36b37e' },
-  { title: '未读私信', value: 0, icon: 'message', color: '***REMOVED***5b8ff9' },
+  { title: '待售商品', value: 0, icon: 'shopping', color: '#ff7a45' },
+  { title: '待处理订单', value: 0, icon: 'order', color: '#36b37e' },
+  { title: '未读私信', value: 0, icon: 'message', color: '#5b8ff9' },
 ])
 const activeUsers = ref([])
 const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" fill="%231b1b18"/%3E%3Ccircle cx="20" cy="16" r="6" fill="%23ffffff"/%3E%3Cpath d="M8 36c0-6.6 5.4-12 12-12s12 5.4 12 12" fill="%23ffffff"/%3E%3C/svg%3E'
@@ -690,7 +690,7 @@ function getMonth(time) {
   justify-content: center;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: ***REMOVED***fff;
+  color: #fff;
 }
 .brand-mark svg { width: 17px; height: 17px; }
 
@@ -747,7 +747,7 @@ function getMonth(time) {
   padding: 0 4px;
   border-radius: var(--radius-full);
   background: var(--danger);
-  color: ***REMOVED***fff;
+  color: #fff;
   font-size: 10px;
   line-height: 16px;
   font-weight: var(--weight-semibold);
@@ -868,20 +868,20 @@ function getMonth(time) {
   line-height: var(--leading-tight);
   letter-spacing: -0.03em;
   font-weight: var(--weight-semibold);
-  color: ***REMOVED***fff;
+  color: #fff;
   margin: var(--space-3) 0 var(--space-4);
 }
 .hero-sub { color: rgba(255, 255, 255, 0.85); margin-bottom: var(--space-6); }
 .hero-actions { display: flex; gap: var(--space-3); }
 .hero-actions .btn-primary {
-  background: ***REMOVED***fff;
+  background: #fff;
   color: var(--text);
 }
 .hero-actions .btn-primary:hover { background: rgba(255, 255, 255, 0.9); color: var(--text); }
 .hero-actions .btn-outline {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.55);
-  color: ***REMOVED***fff;
+  color: #fff;
 }
 .hero-actions .btn-outline:hover { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.8); }
 
@@ -898,7 +898,7 @@ function getMonth(time) {
   font-size: var(--text-2xl);
   font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
-  color: ***REMOVED***fff;
+  color: #fff;
   margin-top: 2px;
 }
 

@@ -46,7 +46,7 @@ function createFlakes() {
 function draw() {
   if (!ctx) return
   ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = '***REMOVED***fff'
+  ctx.fillStyle = '#fff'
   for (const flake of flakes) {
     ctx.globalAlpha = flake.opacity
     ctx.beginPath()

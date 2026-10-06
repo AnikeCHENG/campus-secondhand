@@ -452,7 +452,7 @@ onMounted(async () => {
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
 .brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: ***REMOVED***fff; }
+.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 .main-nav { display: flex; gap: var(--space-1); flex: 1; }
@@ -476,7 +476,7 @@ onMounted(async () => {
 .tabs { display: flex; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border); }
 .tab { flex: 1; padding: 8px; font-size: var(--text-sm); color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .tab:hover { color: var(--text); }
-.tab.active { background: var(--accent); border-color: var(--accent); color: ***REMOVED***fff; }
+.tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .conv-list { flex: 1; overflow-y: auto; padding: var(--space-2); }
 .conv { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3); text-align: left; background: transparent; border: none; border-radius: var(--radius); transition: background var(--dur-fast) var(--ease); }
@@ -484,7 +484,7 @@ onMounted(async () => {
 .conv.active { background: var(--accent-soft); }
 .conv-avatar { position: relative; width: 44px; height: 44px; border-radius: var(--radius-full); overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
 .conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.msg-badge { position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 4px; background: var(--danger); color: ***REMOVED***fff; font-size: 10px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; }
+.msg-badge { position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 4px; background: var(--danger); color: #fff; font-size: 10px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; }
 .conv-info { flex: 1; min-width: 0; }
 .conv-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
 .conv-name { font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--text); }
@@ -515,7 +515,7 @@ onMounted(async () => {
 .message-bubble { padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); border-top-left-radius: 4px; }
 .message.sent .message-bubble { background: var(--accent); border-color: var(--accent); border-radius: var(--radius-lg); border-top-right-radius: 4px; }
 .message-bubble p { font-size: var(--text-base); color: var(--text); line-height: var(--leading-normal); }
-.message.sent .message-bubble p { color: ***REMOVED***fff; }
+.message.sent .message-bubble p { color: #fff; }
 .message-time { font-size: var(--text-xs); color: var(--text-3); padding: 0 4px; }
 
 .chat-input { display: flex; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); }

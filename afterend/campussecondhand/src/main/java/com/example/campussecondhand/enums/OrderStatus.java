@@ -12,7 +12,7 @@ package com.example.campussecondhand.enums;
  *      └──取消/超时──&gt; 4 已取消
  * </pre>
  *
- * <p>注意：仅 {@link ***REMOVED***PENDING_PAYMENT} 允许支付与取消，其余状态为终态或需卖家/买家推进。</p>
+ * <p>注意：仅 {@link #PENDING_PAYMENT} 允许支付与取消，其余状态为终态或需卖家/买家推进。</p>
  */
 public enum OrderStatus {
 

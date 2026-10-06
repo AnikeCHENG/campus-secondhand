@@ -16,7 +16,7 @@ public enum ProductStatus {
     /** 1：在售，可下单 */
     ON_SALE(1, "在售"),
 
-    /** 2：已售出，成交后由 ProductService***REMOVED***markAsSold 写入 */
+    /** 2：已售出，成交后由 ProductService#markAsSold 写入 */
     SOLD(2, "已售出");
 
     private final int code;

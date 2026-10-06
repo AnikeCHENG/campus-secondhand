@@ -16,7 +16,7 @@ import java.util.Optional;
 /**
  * 浏览历史。
  *
- * <p>历史的写入发生在商品详情接口内（见 {@code ProductController***REMOVED***detail}），
+ * <p>历史的写入发生在商品详情接口内（见 {@code ProductController#detail}），
  * 本 Controller 只负责读取与清空。</p>
  */
 @RestController

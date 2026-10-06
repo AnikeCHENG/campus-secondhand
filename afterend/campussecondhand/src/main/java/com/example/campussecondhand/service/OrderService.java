@@ -34,8 +34,8 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <p>状态流转约束集中在此，Controller 只做鉴权与参数校验：</p>
  * <ul>
- *   <li>仅 {@link OrderStatus***REMOVED***PENDING_PAYMENT} 可支付，且未超过 {@code expire_time}</li>
- *   <li>仅 {@link OrderStatus***REMOVED***PENDING_PAYMENT} 可取消（已支付不允许取消）</li>
+ *   <li>仅 {@link OrderStatus#PENDING_PAYMENT} 可支付，且未超过 {@code expire_time}</li>
+ *   <li>仅 {@link OrderStatus#PENDING_PAYMENT} 可取消（已支付不允许取消）</li>
  *   <li>取消必须把商品恢复为在售，否则商品会被永久锁定</li>
  * </ul>
  */
@@ -47,7 +47,7 @@ public class OrderService {
     private static final DateTimeFormatter ORDER_NO_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    /** data URL 中分隔元信息与 base64 载荷的标记，见 {@link ***REMOVED***firstImage} */
+    /** data URL 中分隔元信息与 base64 载荷的标记，见 {@link #firstImage} */
     private static final String BASE64_MARKER = "base64,";
 
     private final OrderRepository orderRepository;
@@ -312,7 +312,7 @@ public class OrderService {
      * <p>逐单独立事务：单条订单失败（如下架商品已被删除）不应影响其余订单，
      * 否则整批回滚会造成部分订单被重复扫描、迟迟无法释放。</p>
      *
-     * <p>与 {@link ***REMOVED***autoCancelIfExpired} 是互补关系而非重复：
+     * <p>与 {@link #autoCancelIfExpired} 是互补关系而非重复：
      * 定时任务负责用户完全离开后的兜底释放（最长延迟一个扫描周期），
      * 惰性检查负责扫描间隙内用户访问收银台时立即释放。两者同时存在，
      * 商品被锁定的窗口时间才趋近于零。</p>

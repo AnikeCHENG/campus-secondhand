@@ -9,12 +9,12 @@ import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface LikeRecordRepository extends BaseMapper<LikeRecord> {
-    @Select("SELECT COUNT(*) FROM like_record WHERE post_id = ***REMOVED***{postId}")
+    @Select("SELECT COUNT(*) FROM like_record WHERE post_id = #{postId}")
     int countByPostId(@Param("postId") Long postId);
 
-    @Select("SELECT COUNT(*) FROM like_record WHERE post_id = ***REMOVED***{postId} AND user_id = ***REMOVED***{userId}")
+    @Select("SELECT COUNT(*) FROM like_record WHERE post_id = #{postId} AND user_id = #{userId}")
     int countByPostIdAndUserId(@Param("postId") Long postId, @Param("userId") Long userId);
 
-    @Delete("DELETE FROM like_record WHERE post_id = ***REMOVED***{postId} AND user_id = ***REMOVED***{userId}")
+    @Delete("DELETE FROM like_record WHERE post_id = #{postId} AND user_id = #{userId}")
     int deleteByPostIdAndUserId(@Param("postId") Long postId, @Param("userId") Long userId);
 }

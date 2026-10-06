@@ -1,16 +1,19 @@
+import os
 import pymysql
 
 connection = pymysql.connect(
     host='localhost',
-    user='root',
-    password='123456',
-    database='waste_recycle_platform',
+    user=os.environ.get('DB_USERNAME', 'root'),
+    # 口令不再硬编码：此前 '123456' 与下方 bcrypt 哈希一并提交到公开仓库
+    password=os.environ['DB_PASSWORD'],
+    database=os.environ.get('DB_NAME', 'campus_secondhand'),
     charset='utf8mb4'
 )
 
 try:
     with connection.cursor() as cursor:
-        password_hash = '$2b$12$BBQElYCGIVIK0lRCZOVfG.mqRV5H.SEfgadqX/xkIMr6/f2J.8BSS'
+        # 该哈希曾用于重置 admin/testuser 的口令，不可再硬编码在仓库中
+        password_hash = os.environ['PASSWORD_HASH']
         
         sql = "UPDATE users SET password = %s WHERE username IN ('testuser', 'admin', 'zjh123', 'zjh')"
         cursor.execute(sql, (password_hash,))

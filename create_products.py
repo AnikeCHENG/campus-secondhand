@@ -2,28 +2,28 @@ import os
 import requests
 import json
 
-***REMOVED*** 图片文件夹路径
+# 图片文件夹路径
 images_dir = "frontend/campus-secondhand/src/images"
-***REMOVED*** API基础URL
+# API基础URL
 api_base = "http://localhost:8080/api/products"
 
-***REMOVED*** 获取图片列表
+# 获取图片列表
 def get_images():
     images = []
     if os.path.exists(images_dir):
         for filename in os.listdir(images_dir):
             if filename.endswith('.avif'):
-                ***REMOVED*** 提取商品名称（去掉扩展名）
+                # 提取商品名称（去掉扩展名）
                 product_name = os.path.splitext(filename)[0]
-                ***REMOVED*** 构建图片路径
+                # 构建图片路径
                 image_path = f"/src/images/{filename}"
                 images.append((product_name, image_path))
     return images
 
-***REMOVED*** 创建商品
+# 创建商品
 def create_product(product_name, image_path):
     try:
-        ***REMOVED*** 构造商品数据
+        # 构造商品数据
         data = {
             "title": product_name,
             "description": f"这是一个{product_name}",
@@ -32,7 +32,7 @@ def create_product(product_name, image_path):
             "condition": "good",
             "images": image_path
         }
-        ***REMOVED*** 发送创建请求
+        # 发送创建请求
         headers = {
             "Content-Type": "application/json"
         }
@@ -50,15 +50,15 @@ def create_product(product_name, image_path):
         print(f"创建商品 {product_name} 时发生错误: {e}")
     return False
 
-***REMOVED*** 主函数
+# 主函数
 def main():
     print("开始创建商品...")
     
-    ***REMOVED*** 获取图片列表
+    # 获取图片列表
     images = get_images()
     print(f"找到 {len(images)} 张图片")
     
-    ***REMOVED*** 创建商品
+    # 创建商品
     for product_name, image_path in images:
         create_product(product_name, image_path)
     

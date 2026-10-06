@@ -366,7 +366,7 @@ onMounted(fetchProduct)
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-4); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex: 1; }
 .brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: ***REMOVED***fff; }
+.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 .header-actions { display: flex; align-items: center; gap: var(--space-2); }

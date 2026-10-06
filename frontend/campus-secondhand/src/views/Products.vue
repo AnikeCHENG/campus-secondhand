@@ -442,7 +442,7 @@ watch(() => route.fullPath, () => {
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
 .brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: ***REMOVED***fff; }
+.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
 .brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
 .main-nav { display: flex; gap: var(--space-1); flex: 1; }
@@ -489,11 +489,11 @@ watch(() => route.fullPath, () => {
 .category-row { margin-top: var(--space-4); }
 .chip { padding: 7px 14px; font-size: var(--text-sm); color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); transition: all var(--dur-fast) var(--ease); }
 .chip:hover { border-color: var(--border-strong); color: var(--text); }
-.chip.active { background: var(--accent); border-color: var(--accent); color: ***REMOVED***fff; }
+.chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .filter-actions { display: flex; gap: var(--space-3); }
 
 /* 商品网格 */
-.products-section { min-height: 400px; margin-top: var(--space-6); background: ***REMOVED***1a1a1a; padding: var(--space-6); border-radius: var(--radius-lg); }
+.products-section { min-height: 400px; margin-top: var(--space-6); background: #1a1a1a; padding: var(--space-6); border-radius: var(--radius-lg); }
 .products-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .product-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; transition: transform .16s ease, box-shadow .2s ease, border-color .2s ease; }
 .product-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
@@ -506,11 +506,11 @@ watch(() => route.fullPath, () => {
 .product-overlay { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.14) 55%, rgba(0, 0, 0, 0.45)); opacity: 0; transition: opacity .25s ease; }
 .product-image:hover .product-overlay { opacity: 1; }
 .overlay-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.overlay-tags span { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.2); color: ***REMOVED***fff; font-size: var(--text-xs); backdrop-filter: blur(4px); }
-.overlay-center { margin: auto; text-align: center; color: ***REMOVED***fff; transform: translateY(4px); transition: transform .25s ease; }
+.overlay-tags span { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.2); color: #fff; font-size: var(--text-xs); backdrop-filter: blur(4px); }
+.overlay-center { margin: auto; text-align: center; color: #fff; transform: translateY(4px); transition: transform .25s ease; }
 .product-image:hover .overlay-center { transform: translateY(0); }
 .overlay-center h3 { margin: 0 0 10px; font-size: var(--text-lg); }
-.overlay-btn { border: 0; border-radius: 999px; padding: 8px 16px; background: ***REMOVED***111; color: ***REMOVED***fff; cursor: pointer; }
+.overlay-btn { border: 0; border-radius: 999px; padding: 8px 16px; background: #111; color: #fff; cursor: pointer; }
 .product-info { padding: var(--space-4); flex: 1; }
 .product-title { font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-desc { margin-top: 4px; font-size: var(--text-sm); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

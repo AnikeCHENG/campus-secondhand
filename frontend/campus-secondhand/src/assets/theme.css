@@ -51,33 +51,33 @@
   --radius-full: 999px;
 
   /* ---------- 颜色（浅色主题） ---------- */
-  --bg: ***REMOVED***f6f6f4;
-  --bg-subtle: ***REMOVED***efefec;
-  --surface: ***REMOVED***ffffff;
-  --surface-2: ***REMOVED***fafaf9;
-  --surface-3: ***REMOVED***f3f3f0;
+  --bg: #f6f6f4;
+  --bg-subtle: #efefec;
+  --surface: #ffffff;
+  --surface-2: #fafaf9;
+  --surface-3: #f3f3f0;
 
-  --border: ***REMOVED***e7e7e2;
-  --border-strong: ***REMOVED***d8d8d2;
+  --border: #e7e7e2;
+  --border-strong: #d8d8d2;
 
-  --text: ***REMOVED***1b1b18;
-  --text-2: ***REMOVED***6b6b64;
-  --text-3: ***REMOVED***9a9a92;
-  --text-inverse: ***REMOVED***ffffff;
+  --text: #1b1b18;
+  --text-2: #6b6b64;
+  --text-3: #9a9a92;
+  --text-inverse: #ffffff;
 
-  --accent: ***REMOVED***0b6e54;
-  --accent-hover: ***REMOVED***095a45;
-  --accent-active: ***REMOVED***074736;
+  --accent: #0b6e54;
+  --accent-hover: #095a45;
+  --accent-active: #074736;
   --accent-soft: rgba(11, 110, 84, 0.08);
   --accent-soft-strong: rgba(11, 110, 84, 0.14);
 
-  --success: ***REMOVED***1f8a4c;
+  --success: #1f8a4c;
   --success-soft: rgba(31, 138, 76, 0.1);
-  --warning: ***REMOVED***b07d12;
+  --warning: #b07d12;
   --warning-soft: rgba(176, 125, 18, 0.1);
-  --danger: ***REMOVED***c0392b;
+  --danger: #c0392b;
   --danger-soft: rgba(192, 57, 43, 0.1);
-  --info: ***REMOVED***2563eb;
+  --info: #2563eb;
   --info-soft: rgba(37, 99, 235, 0.1);
 
   /* ---------- 阴影（极克制） ---------- */
@@ -348,11 +348,11 @@ body.has-wallpaper .site-footer {
 
 .btn-danger {
   background: var(--danger);
-  color: ***REMOVED***fff;
+  color: #fff;
 }
 .btn-danger:hover {
-  background: ***REMOVED***a93226;
-  color: ***REMOVED***fff;
+  background: #a93226;
+  color: #fff;
 }
 
 .btn-sm {
@@ -486,13 +486,13 @@ body.has-wallpaper .site-footer {
    Element Plus 主题覆盖
    ========================================================= */
 :root {
-  --el-color-primary: ***REMOVED***0b6e54;
-  --el-color-primary-light-3: ***REMOVED***4a9179;
-  --el-color-primary-light-5: ***REMOVED***85b3a4;
-  --el-color-primary-light-7: ***REMOVED***b9d4cc;
-  --el-color-primary-light-8: ***REMOVED***d3e4df;
-  --el-color-primary-light-9: ***REMOVED***e9f1ef;
-  --el-color-primary-dark-2: ***REMOVED***095a45;
+  --el-color-primary: #0b6e54;
+  --el-color-primary-light-3: #4a9179;
+  --el-color-primary-light-5: #85b3a4;
+  --el-color-primary-light-7: #b9d4cc;
+  --el-color-primary-light-8: #d3e4df;
+  --el-color-primary-light-9: #e9f1ef;
+  --el-color-primary-dark-2: #095a45;
   --el-border-radius-base: 10px;
   --el-border-radius-small: 6px;
   --el-text-color-primary: var(--text);

@@ -159,12 +159,12 @@ onMounted(() => {
 
 .admin-categories h1 {
   font-size: 2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 30px;
 }
 
 .category-form {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 30px;
@@ -173,7 +173,7 @@ onMounted(() => {
 
 .category-form h3 {
   font-size: 1.2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 15px;
 }
 
@@ -184,21 +184,21 @@ onMounted(() => {
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  color: ***REMOVED***666;
+  color: #666;
   font-weight: bold;
 }
 
 .form-input {
   width: 100%;
   padding: 10px;
-  border: 1px solid ***REMOVED***ddd;
+  border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 16px;
 }
 
 .btn-primary {
   padding: 10px 20px;
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -207,11 +207,11 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 
 .category-list {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -219,7 +219,7 @@ onMounted(() => {
 
 .category-list h3 {
   font-size: 1.2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 15px;
 }
 
@@ -242,12 +242,12 @@ onMounted(() => {
 .category-name {
   font-size: 16px;
   font-weight: bold;
-  color: ***REMOVED***333;
+  color: #333;
 }
 
 .category-count {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
 }
 
 .category-actions {
@@ -257,7 +257,7 @@ onMounted(() => {
 
 .btn-secondary {
   padding: 8px 16px;
-  background-color: ***REMOVED***2196F3;
+  background-color: #2196F3;
   color: white;
   border: none;
   border-radius: 5px;
@@ -266,12 +266,12 @@ onMounted(() => {
 }
 
 .btn-secondary:hover {
-  background-color: ***REMOVED***0b7dda;
+  background-color: #0b7dda;
 }
 
 .btn-danger {
   padding: 8px 16px;
-  background-color: ***REMOVED***f44336;
+  background-color: #f44336;
   color: white;
   border: none;
   border-radius: 5px;
@@ -280,13 +280,13 @@ onMounted(() => {
 }
 
 .btn-danger:hover {
-  background-color: ***REMOVED***da190b;
+  background-color: #da190b;
 }
 
 .no-categories {
   text-align: center;
   padding: 50px;
-  color: ***REMOVED***999;
+  color: #999;
   font-size: 1.2rem;
 }
 
@@ -314,7 +314,7 @@ onMounted(() => {
 
 .modal-content h3 {
   font-size: 1.2rem;
-  color: ***REMOVED***333;
+  color: #333;
   margin-bottom: 20px;
 }
 
@@ -335,7 +335,7 @@ onMounted(() => {
 .form-group label { color: var(--text-2); font-weight: var(--weight-medium); font-size: var(--text-sm); }
 .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: var(--text-base); color: var(--text); background: var(--surface); }
 .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.btn-primary { padding: 9px 18px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
+.btn-primary { padding: 9px 18px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
 .btn-primary:hover { background: var(--accent-hover); }
 .category-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-4); margin-bottom: var(--space-2); box-shadow: none; }
 .category-name { font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--text); }
@@ -343,7 +343,7 @@ onMounted(() => {
 .btn-secondary { padding: 7px 16px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }
 .btn-secondary:hover { background: var(--surface-3); }
 .btn-danger { padding: 7px 16px; background: var(--danger-soft); color: var(--danger); border: none; border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.btn-danger:hover { background: var(--danger); color: ***REMOVED***fff; }
+.btn-danger:hover { background: var(--danger); color: #fff; }
 .no-categories { text-align: center; padding: var(--space-12); color: var(--text-3); font-size: var(--text-base); }
 .modal { background: rgba(20,20,18,0.35); }
 .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }

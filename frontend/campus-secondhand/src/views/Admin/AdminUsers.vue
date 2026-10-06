@@ -183,20 +183,20 @@ onMounted(() => {
 
 .admin-header h1 {
   font-size: 2rem;
-  color: ***REMOVED***333;
+  color: #333;
 }
 
 .back-link {
   text-decoration: none;
-  color: ***REMOVED***333;
+  color: #333;
   padding: 10px 15px;
-  background-color: ***REMOVED***f5f5f5;
+  background-color: #f5f5f5;
   border-radius: 5px;
   transition: all 0.3s ease;
 }
 
 .back-link:hover {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
 }
 
 /* 搜索样式 */
@@ -210,14 +210,14 @@ onMounted(() => {
 .search-input {
   flex: 1;
   padding: 10px;
-  border: 1px solid ***REMOVED***ddd;
+  border: 1px solid #ddd;
   border-radius: 5px;
   font-size: 16px;
 }
 
 .search-btn {
   padding: 10px 20px;
-  background-color: ***REMOVED***4CAF50;
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 5px;
@@ -227,7 +227,7 @@ onMounted(() => {
 }
 
 .search-btn:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 
 /* 分页样式 */
@@ -238,13 +238,13 @@ onMounted(() => {
   gap: 10px;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid ***REMOVED***eee;
+  border-top: 1px solid #eee;
 }
 
 .pagination-button {
   padding: 8px 16px;
-  background-color: ***REMOVED***f5f5f5;
-  color: ***REMOVED***333;
+  background-color: #f5f5f5;
+  color: #333;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -253,7 +253,7 @@ onMounted(() => {
 }
 
 .pagination-button:hover:not(:disabled) {
-  background-color: ***REMOVED***e0e0e0;
+  background-color: #e0e0e0;
   transform: translateY(-1px);
 }
 
@@ -264,14 +264,14 @@ onMounted(() => {
 
 .pagination-info {
   font-size: 14px;
-  color: ***REMOVED***666;
+  color: #666;
   font-weight: 500;
 }
 
 .no-users {
   text-align: center;
   padding: 50px;
-  color: ***REMOVED***999;
+  color: #999;
   font-size: 1.2rem;
 }
 
@@ -289,17 +289,17 @@ onMounted(() => {
 .users-table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid ***REMOVED***e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .users-table th {
-  background-color: ***REMOVED***f5f5f5;
+  background-color: #f5f5f5;
   font-weight: bold;
-  color: ***REMOVED***333;
+  color: #333;
 }
 
 .users-table tr:hover {
-  background-color: ***REMOVED***f9f9f9;
+  background-color: #f9f9f9;
 }
 
 .action-button {
@@ -311,21 +311,21 @@ onMounted(() => {
 }
 
 .disable-button {
-  background-color: ***REMOVED***ff6b6b;
+  background-color: #ff6b6b;
   color: white;
 }
 
 .disable-button:hover {
-  background-color: ***REMOVED***ff5252;
+  background-color: #ff5252;
 }
 
 .enable-button {
-  background-color: ***REMOVED***4caf50;
+  background-color: #4caf50;
   color: white;
 }
 
 .enable-button:hover {
-  background-color: ***REMOVED***45a049;
+  background-color: #45a049;
 }
 </style>
 
@@ -340,7 +340,7 @@ onMounted(() => {
 .user-search { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); }
 .search-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: var(--text-base); color: var(--text); background: var(--surface); }
 .search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.search-btn { padding: 10px 20px; background: var(--accent); color: ***REMOVED***fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
+.search-btn { padding: 10px 20px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: var(--text-base); font-weight: var(--weight-medium); }
 .search-btn:hover { background: var(--accent-hover); }
 
 .users-table-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
@@ -353,9 +353,9 @@ onMounted(() => {
 
 .action-button { padding: 5px 12px; border-radius: var(--radius-sm); font-size: var(--text-sm); border: 1px solid transparent; background: var(--surface-3); color: var(--text); }
 .disable-button { background: var(--danger-soft); color: var(--danger); }
-.disable-button:hover { background: var(--danger); color: ***REMOVED***fff; }
+.disable-button:hover { background: var(--danger); color: #fff; }
 .enable-button { background: var(--accent-soft); color: var(--accent); }
-.enable-button:hover { background: var(--accent); color: ***REMOVED***fff; }
+.enable-button:hover { background: var(--accent); color: #fff; }
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .pagination-button { padding: 6px 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }

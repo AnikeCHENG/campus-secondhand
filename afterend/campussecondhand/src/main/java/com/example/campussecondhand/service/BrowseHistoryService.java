@@ -37,7 +37,7 @@ public class BrowseHistoryService {
     }
 
     /**
-     * 记录一次浏览并裁剪到 {@link ***REMOVED***MAX_HISTORY} 条。
+     * 记录一次浏览并裁剪到 {@link #MAX_HISTORY} 条。
      *
      * <p>先 upsert 再裁剪：upsert 会把该商品的浏览时间刷新到最新，
      * 因此它一定落在保留窗口内，不会被自己挤掉。</p>
@@ -51,7 +51,7 @@ public class BrowseHistoryService {
     }
 
     /**
-     * 浏览历史列表，按最近浏览时间倒序，最多 {@link ***REMOVED***MAX_HISTORY} 条。
+     * 浏览历史列表，按最近浏览时间倒序，最多 {@link #MAX_HISTORY} 条。
      *
      * <p>已售出商品同样返回；商品被物理删除时给「商品已删除」占位。</p>
      */
