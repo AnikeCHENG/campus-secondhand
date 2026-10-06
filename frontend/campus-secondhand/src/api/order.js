@@ -2,8 +2,6 @@ const BASE = import.meta.env.VITE_API_BASE || '/api'
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  console.log('Token from storage:', token ? 'exists' : 'null')
-  console.log('Token value:', token)
   try {
     const headers = {
       'Content-Type': 'application/json'
@@ -11,7 +9,6 @@ async function request(path, options = {}) {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
-    console.log('Request headers:', headers)
     const res = await fetch(`${BASE}${path}`, {
       headers,
       ...options,
@@ -193,32 +190,18 @@ export async function getOrderList() {
 
 // 确认收货
 export async function confirmOrder(orderId) {
-  try {
-    return await request(`/orders/${orderId}/confirm`, {
-      method: 'PUT'
-    })
-  } catch (error) {
-    console.error('确认收货失败:', error)
-    return {
-      code: 200,
-      message: '确认收货成功'
-    }
-  }
+  return await request(`/orders/${orderId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status: 3 })
+  })
 }
 
 // 取消订单
 export async function cancelOrder(orderId) {
-  try {
-    return await request(`/orders/${orderId}/cancel`, {
-      method: 'PUT'
-    })
-  } catch (error) {
-    console.error('取消订单失败:', error)
-    return {
-      code: 200,
-      message: '取消订单成功'
-    }
-  }
+  return await request(`/orders/${orderId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status: 4 })
+  })
 }
 
 // 创建订单

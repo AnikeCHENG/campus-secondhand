@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE || '/api/auth'
+const BASE = import.meta.env.VITE_API_BASE || '/api'
 
 async function request(path, options = {}) {
   try {
@@ -34,25 +34,29 @@ async function request(path, options = {}) {
 }
 
 export async function login({ username, password }) {
-  return await request('/login', { method: 'POST', body: JSON.stringify({ username, password }) })
+  return await request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
 }
 
 export async function sendCode({ email }) {
-  return await request('/send-code', { method: 'POST', body: JSON.stringify({ email }) })
+  return await request('/auth/send-code', { method: 'POST', body: JSON.stringify({ email }) })
 }
 
 export async function register({ username, email, password, confirmPassword, code }) {
-  return await request('/register', { method: 'POST', body: JSON.stringify({ username, email, password, confirmPassword, code }) })
+  return await request('/auth/register', { method: 'POST', body: JSON.stringify({ username, email, password, confirmPassword, code }) })
 }
 
 export async function forgotPassword({ email }) {
   const body = new URLSearchParams()
   body.append('email', email)
-  return await request('/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+  return await request('/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
 }
 
+// 后端使用无状态 JWT，无退出接口；前端清除本地凭证即可视为退出
 export async function logout() {
-  return await request('/logout', { method: 'POST' })
+  localStorage.removeItem('token')
+  localStorage.removeItem('username')
+  sessionStorage.removeItem('justLoggedIn')
+  return { code: 200, message: '已退出登录' }
 }
 
 export default { login, register, sendCode, forgotPassword, logout }

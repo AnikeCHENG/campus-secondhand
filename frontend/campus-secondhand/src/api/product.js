@@ -57,7 +57,7 @@ export async function createProduct(params) {
 }
 
 export async function updateProduct(id, params) {
-  return await request(`/products/${id}`, {
+  return await request(`/products/update/${id}`, {
     method: 'PUT',
     body: JSON.stringify(params)
   })
@@ -70,7 +70,7 @@ export async function deleteProduct(id) {
 }
 
 export async function markAsSold(id) {
-  return await request(`/products/${id}/sold`, {
+  return await request(`/products/sold/${id}`, {
     method: 'PUT'
   })
 }
