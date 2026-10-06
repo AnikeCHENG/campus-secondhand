@@ -570,6 +570,8 @@ async function handleLogout() {
   } catch {
     console.log('Logout API call completed')
   }
+  notificationStore.stopPolling()
+  notificationStore.resetUnreadCount()
   localStorage.removeItem('token')
   localStorage.removeItem('username')
   sessionStorage.removeItem('justLoggedIn')

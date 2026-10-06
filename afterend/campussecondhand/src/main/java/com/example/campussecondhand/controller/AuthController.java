@@ -116,8 +116,12 @@ public class AuthController {
             }
 
             User user = userService.registerUser(userDTO);
+            log.info("注册成功: username={}", userDTO.getUsername());
             return ResponseEntity.ok(ApiResponse.success("注册成功", user));
         } catch (Exception e) {
+            // 必须打印堆栈：否则注册失败在日志里没有任何痕迹，无法定位
+            log.error("注册失败: username={}, email={}, 原因={}",
+                    userDTO.getUsername(), userDTO.getEmail(), e.getMessage(), e);
             return ResponseEntity.ok(ApiResponse.error(500, "注册失败"));
         }
     }

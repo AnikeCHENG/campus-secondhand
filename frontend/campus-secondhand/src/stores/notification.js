@@ -8,6 +8,8 @@ export const useNotificationStore = defineStore('notification', () => {
   let pollInterval = ref(null)
 
   async function fetchUnreadCount() {
+    // 未登录时后端会因缺少 Authorization 头返回 401，这里直接跳过，避免无意义请求
+    if (!localStorage.getItem('token')) return
     try {
       const res = await getUnreadCount()
       if (res.code === 200 && res.data) {
@@ -20,10 +22,12 @@ export const useNotificationStore = defineStore('notification', () => {
 
   function startPolling(interval = 30000) {
     if (isPolling.value) return
-    
+    // 未登录不启动轮询：/messages/unread-count 需要 Authorization 头
+    if (!localStorage.getItem('token')) return
+
     isPolling.value = true
     fetchUnreadCount()
-    
+
     pollInterval.value = setInterval(() => {
       fetchUnreadCount()
     }, interval)
