@@ -89,6 +89,7 @@
             placeholder="搜索商品名称、描述…"
             aria-label="搜索关键词"
             @keyup.enter="handleSearch"
+            @input="onSearchInput"
           />
           <button v-if="searchKeyword" class="clear-btn" type="button" aria-label="清空" @click="clearSearch">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -378,9 +379,9 @@ import DashboardCard from '../components/DashboardCard.vue'
 import RecentItems from '../components/RecentItems.vue'
 import Recommendations from '../components/Recommendations.vue'
 import VideoBackground from '../components/VideoBackground.vue'
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { logout } from '../api/auth'
-import { getProductList } from '../api/product'
+import { getProductList, searchProducts } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
 import { useNotificationStore } from '../stores/notification'
 import { useUserStore } from '../stores/user'
@@ -448,28 +449,34 @@ function handleRecommendationClick(recommendation) {
   })
 }
 
-const searchSuggestions = computed(() => {
-  if (!searchKeyword.value || searchKeyword.value.length < 1) {
-    return []
+/**
+ * 搜索建议。
+ *
+ * <p>改为调用后端 {@code /api/products/search}：大厅列表已改服务端分页，
+ * 本地只剩当前页十几个商品，用它生成联想词等于只在第一页里搜，
+ * 会出现"明明有货却搜不到"的现象。</p>
+ */
+const searchSuggestions = ref([])
+
+async function refreshSuggestions() {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) {
+    searchSuggestions.value = []
+    return
   }
-
-  const keyword = searchKeyword.value.toLowerCase()
-  const suggestions = new Set()
-
-  allProducts.value.forEach(product => {
-    if (product.title && product.title.toLowerCase().includes(keyword)) {
-      suggestions.add(product.title)
-    }
-    if (product.description && product.description.toLowerCase().includes(keyword)) {
-      const words = product.description.split(/\s+/).filter(word =>
-        word.toLowerCase().includes(keyword) && word.length > 1
-      )
-      words.forEach(word => suggestions.add(word))
-    }
-  })
-
-  return Array.from(suggestions).slice(0, 6)
-})
+  try {
+    const res = await searchProducts(keyword)
+    const list = Array.isArray(res?.data) ? res.data : []
+    const seen = new Set()
+    searchSuggestions.value = list
+      .flatMap(p => [p.title, ...String(p.description || '').split(/\s+/)])
+      .filter(word => word && word.length > 1 && word.toLowerCase().includes(keyword.toLowerCase()))
+      .filter(word => (seen.has(word) ? false : (seen.add(word), true)))
+      .slice(0, 6)
+  } catch {
+    searchSuggestions.value = []
+  }
+}
 
 async function toggleSearch() {
   showSearch.value = !showSearch.value
@@ -484,9 +491,17 @@ async function toggleSearch() {
 
 function clearSearch() {
   searchKeyword.value = ''
+  searchSuggestions.value = []
   if (searchInput.value) {
     searchInput.value.focus()
   }
+}
+
+/** 输入联想：防抖 250ms，避免每敲一个字就打一次接口 */
+let suggestTimer = null
+function onSearchInput() {
+  if (suggestTimer) clearTimeout(suggestTimer)
+  suggestTimer = setTimeout(refreshSuggestions, 250)
 }
 
 function selectSearchItem(item) {
@@ -537,10 +552,11 @@ function loadSearchHistory() {
 
 async function loadProducts() {
   try {
-    const res = await getProductList()
-    if (res.code === 200 && res.data) {
-      allProducts.value = res.data
-      recentItems.value = res.data.slice(0, 3).map(item => ({
+    // 首页只展示最新若干件，取第一页即可；首页不做筛选排序，也不需要分页器
+    const res = await getProductList(1, 12)
+    if (res.code === 200 && res.data?.list) {
+      allProducts.value = res.data.list
+      recentItems.value = res.data.list.slice(0, 3).map(item => ({
         id: item.id,
         title: item.title,
         price: `¥${item.price}`,

@@ -244,6 +244,14 @@
             <button class="empty-btn" @click="go('/products')">去逛逛</button>
           </div>
         </div>
+        <div v-if="paging.favorites.total > paging.favorites.size" class="pager">
+          <el-pagination
+            layout="prev, pager, next"
+            :current-page="paging.favorites.page"
+            :page-size="paging.favorites.size"
+            :total="paging.favorites.total"
+            @current-change="onFavoritesPageChange" />
+        </div>
 
         <div v-if="activeTab === 'orders'" class="orders-list">
           <div 
@@ -293,10 +301,18 @@
             <button class="empty-btn" @click="go('/products')">去购物</button>
           </div>
         </div>
+        <div v-if="paging.orders.total > paging.orders.size" class="pager">
+          <el-pagination
+            layout="prev, pager, next"
+            :current-page="paging.orders.page"
+            :page-size="paging.orders.size"
+            :total="paging.orders.total"
+            @current-change="onOrdersPageChange" />
+        </div>
 
         <div v-if="activeTab === 'history'" class="history-list">
           <div v-if="browseHistory.length > 0" class="history-toolbar">
-            <span class="history-count">共 {{ browseHistory.length }} 条，最多保留 50 条</span>
+            <span class="history-count">共 {{ paging.history.total }} 条记录（最多保留 50 条）</span>
             <button type="button" class="history-clear" @click="clearBrowseHistory">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                    aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
@@ -339,6 +355,14 @@
             <p>浏览商品时会自动记录</p>
             <button class="empty-btn" @click="go('/products')">去逛逛</button>
           </div>
+        </div>
+        <div v-if="paging.history.total > paging.history.size" class="pager">
+          <el-pagination
+            layout="prev, pager, next"
+            :current-page="paging.history.page"
+            :page-size="paging.history.size"
+            :total="paging.history.total"
+            @current-change="onHistoryPageChange" />
         </div>
 
         <div v-if="activeTab === 'drafts'" class="drafts-list">
@@ -538,7 +562,7 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted } from 'vue'
+import { ref, reactive, h, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -639,6 +663,19 @@ const browseHistory = ref([])
 const myDrafts = ref([])
 
 /**
+ * 收藏 / 历史 / 订单三个 tab 的服务端分页状态。
+ *
+ * <p>每个 tab 各持一份，因为它们的 total 与当前页互相独立：
+ * 用同一个 page 会在切换 tab 时把另一个 tab 的页码带过去。</p>
+ */
+const PAGED_TABS = ['favorites', 'history', 'orders']
+const paging = reactive(
+  Object.fromEntries(
+    PAGED_TABS.map((id) => [id, { page: 1, size: 10, total: 0 }])
+  )
+)
+
+/**
  * 当前登录用户 ID。
  *
  * 独立的 userId 键此前全项目从未写入，只能从 user JSON 里取；
@@ -731,15 +768,15 @@ function loadDrafts() {
 
 async function loadOrders() {
   try {
-    const res = await getOrderList()
-    console.log('订单数据响应:', res)
-    if (res.code === 200 && res.data) {
-      myOrders.value = res.data.map(order => ({
+    const { page, size } = paging.orders
+    const res = await getOrderList(page, size)
+    if (res.code === 200 && res.data?.list) {
+      myOrders.value = res.data.list.map(order => ({
         id: order.id,
         // statusCode 保留后端原始数字状态，供按钮可见性判断；
         // status 仅是 CSS 类名（pending/completed/cancelled），
         // 0/1/2 三个状态共用 pending，用它判断会导致按钮出现在错误的阶段
-statusCode: order.status,
+        statusCode: order.status,
         title: order.productTitle,
         price: `¥${order.price}`,
         image: order.productImage,
@@ -754,15 +791,23 @@ statusCode: order.status,
         isBuyer: Number(order.buyerId) === Number(currentUserId.value),
         date: new Date(order.createdAt).toLocaleString('zh-CN')
       }))
-      
+
+      // total 是总记录数，不是当页条数——用 length 当计数会让翻页后角标变小
+      paging.orders.total = res.data.total ?? 0
       const ordersTab = tabs.value.find(t => t.id === 'orders')
-      if (ordersTab) ordersTab.count = myOrders.value.length
+      if (ordersTab) ordersTab.count = paging.orders.total
     } else {
       console.error('订单数据格式错误:', res)
     }
   } catch (e) {
     console.error('加载订单失败:', e)
   }
+}
+
+/** 订单翻页 */
+function onOrdersPageChange(page) {
+  paging.orders.page = page
+  loadOrders()
 }
 
 async function loadAllData() {
@@ -781,16 +826,25 @@ async function loadAllData() {
 /** 我的收藏（真实数据） */
 async function loadFavorites() {
   try {
-    const res = await getFavoriteList()
-    if (res.code === 200 && res.data) {
-      myFavorites.value = res.data.map(mapFavoriteItem)
-      stats.value.favorites = myFavorites.value.length
+    const { page, size } = paging.favorites
+    const res = await getFavoriteList(page, size)
+    if (res.code === 200 && res.data?.list) {
+      myFavorites.value = res.data.list.map(mapFavoriteItem)
+      paging.favorites.total = res.data.total ?? 0
+      // 角标与统计都用总收藏数，翻页后不应变小
+      stats.value.favorites = paging.favorites.total
       const tab = tabs.value.find(t => t.id === 'favorites')
-      if (tab) tab.count = myFavorites.value.length
+      if (tab) tab.count = paging.favorites.total
     }
   } catch (error) {
     console.error('加载收藏失败:', error)
   }
+}
+
+/** 收藏翻页 */
+function onFavoritesPageChange(page) {
+  paging.favorites.page = page
+  loadFavorites()
 }
 
 /** 收藏项字段映射为模板所需结构 */
@@ -811,12 +865,13 @@ function mapFavoriteItem(raw) {
   }
 }
 
-/** 浏览历史（真实数据） */
+/** 浏览历史（真实数据，服务端分页） */
 async function loadBrowseHistory() {
   try {
-    const res = await getHistoryList()
-    if (res.code === 200 && res.data) {
-      browseHistory.value = res.data.map(raw => ({
+    const { page, size } = paging.history
+    const res = await getHistoryList(page, size)
+    if (res.code === 200 && res.data?.list) {
+      browseHistory.value = res.data.list.map(raw => ({
         id: raw.id,
         productId: raw.productId,
         title: raw.title,
@@ -826,12 +881,19 @@ async function loadBrowseHistory() {
         isSold: raw.status === 2,
         isDeleted: !!raw.deleted
       }))
+      paging.history.total = res.data.total ?? 0
       const tab = tabs.value.find(t => t.id === 'history')
-      if (tab) tab.count = browseHistory.value.length
+      if (tab) tab.count = paging.history.total
     }
   } catch (error) {
     console.error('加载浏览历史失败:', error)
   }
+}
+
+/** 浏览历史翻页 */
+function onHistoryPageChange(page) {
+  paging.history.page = page
+  loadBrowseHistory()
 }
 
 /** 相对时间：刚刚 / x分钟前 / x小时前 / x天前 / 具体日期 */
@@ -859,8 +921,11 @@ async function clearBrowseHistory() {
     return
   }
   try {
-    await clearHistory()
+await clearHistory()
     browseHistory.value = []
+    // 清空后必须回到第一页：停在第 3 页会得到一个空列表，看起来像"没清成功"
+    paging.history.page = 1
+    paging.history.total = 0
     const tab = tabs.value.find(t => t.id === 'history')
     if (tab) tab.count = 0
     ElMessage.success('已清空浏览记录')
@@ -963,12 +1028,13 @@ async function removeFavorite(item) {
     return
   }
   try {
-    await removeFavoriteById(item.productId ?? item.id)
-    const idx = myFavorites.value.findIndex(p => (p.productId ?? p.id) === (item.productId ?? item.id))
-    if (idx !== -1) myFavorites.value.splice(idx, 1)
-    stats.value.favorites = Math.max(stats.value.favorites - 1, 0)
+await removeFavoriteById(item.productId ?? item.id)
+    // 重新拉取当前页：末页取消掉最后一条时，本地 splice 会留下一页空列表
+    paging.favorites.total = Math.max(paging.favorites.total - 1, 0)
+    stats.value.favorites = paging.favorites.total
     const tab = tabs.value.find(t => t.id === 'favorites')
-    if (tab) tab.count = myFavorites.value.length
+    if (tab) tab.count = paging.favorites.total
+    await loadFavorites()
     ElMessage.success('已取消收藏')
   } catch (error) {
     ElMessage.error(error?.cause?.message || error?.message || '取消收藏失败，请稍后重试')
@@ -2778,6 +2844,7 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 .history-count { font-size: 13px; color: #9a9a92; }
+.pager { display: flex; justify-content: center; margin-top: var(--space-5); }
 .history-clear {
   display: inline-flex;
   align-items: center;

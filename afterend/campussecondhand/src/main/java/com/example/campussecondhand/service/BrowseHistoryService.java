@@ -1,5 +1,11 @@
 package com.example.campussecondhand.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.campussecondhand.common.PageParam;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import com.example.campussecondhand.entity.BrowseHistory;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.enums.ProductStatus;
@@ -51,20 +57,40 @@ public class BrowseHistoryService {
     }
 
     /**
-     * 浏览历史列表，按最近浏览时间倒序，最多 {@link #MAX_HISTORY} 条。
+     * 浏览历史列表（物理分页），按最近浏览时间倒序。
      *
      * <p>已售出商品同样返回；商品被物理删除时给「商品已删除」占位。</p>
+     *
+     * <p><b>此处不再拼 {@code LIMIT 50}</b>：保留 50 条的规则由写入路径
+     * {@link #recordView} 中的 {@code trimToRecent(userId, 50)} 在<b>写入时</b>删除旧行保证，
+     * 表内每个用户本就最多 50 行。原先读取时再拼一次 LIMIT 会与分页拦截器追加的
+     * {@code LIMIT ?, ?} 撞成 {@code LIMIT 50 LIMIT ?, ?} 直接语法错误。
+     * 业务规则不变，只是从"查询期截断"改为依赖已有的"写入期裁剪"。</p>
+     *
+     * <p>商品按当页 id 批量查询，避免逐条 selectById。</p>
      */
-    public List<Map<String, Object>> listHistory(Long userId) {
-        List<BrowseHistory> histories = browseHistoryRepository.selectList(
+    public IPage<Map<String, Object>> pageHistory(Long userId, PageParam paging) {
+        IPage<BrowseHistory> historyPage = browseHistoryRepository.selectPage(
+                paging.toPage(),
                 new QueryWrapper<BrowseHistory>()
                         .eq("user_id", userId)
-                        .orderByDesc("last_view_time", "id")
-                        .last("LIMIT " + MAX_HISTORY));
+                        .orderByDesc("last_view_time", "id"));
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<BrowseHistory> histories = historyPage.getRecords();
+
+        List<Long> productIds = histories.stream()
+                .map(BrowseHistory::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Product> products = productIds.isEmpty()
+                ? Collections.emptyMap()
+                : productRepository.selectBatchIds(productIds).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> p));
+
+        List<Map<String, Object>> items = new ArrayList<>();
         for (BrowseHistory history : histories) {
-            Product product = productRepository.selectById(history.getProductId());
+            Product product = products.get(history.getProductId());
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("productId", history.getProductId());
             item.put("lastViewTime", history.getLastViewTime());
@@ -86,8 +112,11 @@ public class BrowseHistoryService {
                 item.put("statusLabel", status != null ? status.getLabel() : "未知");
                 item.put("deleted", false);
             }
-            result.add(item);
+            items.add(item);
         }
+
+        IPage<Map<String, Object>> result = new Page<>(paging.page(), paging.size(), historyPage.getTotal());
+        result.setRecords(items);
         return result;
     }
 

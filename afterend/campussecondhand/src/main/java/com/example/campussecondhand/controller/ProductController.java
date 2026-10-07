@@ -1,5 +1,10 @@
 package com.example.campussecondhand.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.campussecondhand.common.PageParam;
+import com.example.campussecondhand.common.PageResult;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
@@ -34,14 +39,40 @@ public class ProductController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    /**
+     * 大厅商品列表（物理分页）。
+     *
+     * <p>筛选与排序下推到 SQL，与分页在同一条语句内完成；
+     * 若只分页而把筛选留在前端，结果只会覆盖当前页。
+     * 卖家信息按当页 id 批量补齐，避免每条商品一次 selectById 的 N+1。</p>
+     */
     @GetMapping("/list")
-    public ResponseEntity<ApiResponse<?>> list() {
-        List<Product> products = productService.findAllAvailable();
-        products.forEach(p -> {
-            User seller = userRepository.selectById(p.getUserId());
-            if (seller != null) p.setSeller(seller);
-        });
-        return ResponseEntity.ok(ApiResponse.success("获取成功", products));
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String condition,
+            @RequestParam(required = false, defaultValue = "newest") String sort) {
+
+        PageParam paging = PageParam.of(page, size);
+        IPage<Product> paged = productService.pageAvailable(
+                paging, category, keyword, minPrice, maxPrice, condition, sort);
+
+        List<Long> sellerIds = paged.getRecords().stream()
+                .map(Product::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (!sellerIds.isEmpty()) {
+            Map<Long, User> sellers = userRepository.selectBatchIds(sellerIds).stream()
+                    .collect(Collectors.toMap(User::getId, u -> u));
+            paged.getRecords().forEach(p -> p.setSeller(sellers.get(p.getUserId())));
+        }
+
+        return ResponseEntity.ok(ApiResponse.success("获取成功", PageResult.of(paged)));
     }
 
     @GetMapping("/my")
@@ -251,6 +282,13 @@ public class ProductController {
     }
 
     // 批量更新商品图片和删除没有对应图片的商品
+    /**
+     * 图片迁移端点。<b>一次性数据迁移脚本专用，不对用户暴露。</b>
+     *
+     * <p>它必须遍历<b>全部</b>在售商品，逐个改写图片路径或删除无图商品，
+     * 因此这里刻意调用不加分页的 {@code ProductService#findAllAvailable()}：
+     * 一旦改成按页遍历，只会处理到第一页就静默漏掉其余商品。</p>
+     */
     @PostMapping("/update-images")
     public ResponseEntity<ApiResponse<?>> updateImages(@RequestBody Map<String, Object> params) {
         try {

@@ -29,8 +29,23 @@ async function request(path, options = {}) {
   }
 }
 
-export async function getProductList() {
-  return await request('/products/list')
+/**
+ * 大厅商品列表（服务端分页）。
+ *
+ * <p>筛选与排序已下推到后端：category / keyword / minPrice / maxPrice / condition / sort
+ * 都会拼进 SQL 的 WHERE 与 ORDER BY。若把筛选留在前端，就只会筛当前页的十几条记录。</p>
+ *
+ * <p>返回 data 结构：{ list: [], total, page, size }</p>
+ */
+export async function getProductList(page = 1, size = 12, filters = {}) {
+  const query = new URLSearchParams({ page: String(page), size: String(size) })
+  for (const [key, value] of Object.entries(filters)) {
+    // 空值不传：category= 会被后端当成"分类为空字符串"而非"不筛选"
+    if (value !== '' && value !== null && value !== undefined) {
+      query.set(key, String(value))
+    }
+  }
+  return await request(`/products/list?${query.toString()}`)
 }
 
 export async function getMyProducts() {

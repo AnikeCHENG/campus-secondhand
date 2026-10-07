@@ -132,7 +132,7 @@
                 class="chip"
                 :class="{ active: selectedCondition === cond.value }"
                 type="button"
-                @click="selectedCondition = selectedCondition === cond.value ? '' : cond.value"
+                @click="toggleCondition(cond.value)"
               >
                 {{ cond.label }}
               </button>
@@ -147,7 +147,7 @@
                 class="chip"
                 :class="{ active: selectedSort === sort.value }"
                 type="button"
-                @click="selectedSort = sort.value"
+                @click="selectSort(sort.value)"
               >
                 {{ sort.label }}
               </button>
@@ -249,6 +249,16 @@
             </div>
           </article>
         </div>
+      <!-- 服务端分页：total 取自后端 count，翻页时按条件重新请求 -->
+      <div v-if="paging.total > paging.size && !loading && !error" class="pager">
+        <el-pagination
+          layout="total, prev, pager, next"
+          :current-page="paging.page"
+          :page-size="paging.size"
+          :total="paging.total"
+          @current-change="onPageChange"
+        />
+      </div>
       </div>
     </main>
 
@@ -259,7 +269,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getProductList } from '../api/product'
 
@@ -317,39 +327,47 @@ const searchSuggestions = computed(() => {
   return Array.from(suggestions).slice(0, 6)
 })
 
-const filteredProducts = computed(() => {
-  let result = [...allProducts.value]
-  if (activeCategory.value !== 'all') result = result.filter(p => p.category === activeCategory.value)
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(p =>
-      (p.title && p.title.toLowerCase().includes(keyword)) ||
-      (p.description && p.description.toLowerCase().includes(keyword))
-    )
+/**
+ * 服务端分页与筛选状态。
+ *
+ * <p>筛选与排序已下推后端：它们必须和分页在同一条 SQL 内完成。
+ * 若保留「先取全量再在内存里filter/sort」那套逻辑，筛选只会作用在当前页
+ * 的十几条记录上，用户看到的总数与结果都不对。</p>
+ */
+const paging = reactive({ page: 1, size: 12, total: 0 })
+
+/** 前端选项值 → 后端排序参数 */
+const SORT_PARAM = {
+  newest: 'newest',
+  'price-low': 'priceAsc',
+  'price-high': 'priceDesc',
+  views: 'hot'
+}
+
+const filteredProducts = computed(() => allProducts.value)
+
+function currentFilters() {
+  return {
+    category: activeCategory.value !== 'all' ? activeCategory.value : '',
+    keyword: searchKeyword.value.trim(),
+    minPrice: priceMin.value,
+    maxPrice: priceMax.value,
+    condition: selectedCondition.value,
+    sort: SORT_PARAM[selectedSort.value] || 'newest'
   }
-  if (priceMin.value) {
-    const min = parseFloat(priceMin.value)
-    if (!isNaN(min)) result = result.filter(p => { const price = parseFloat(p.price); return !isNaN(price) && price >= min })
-  }
-  if (priceMax.value) {
-    const max = parseFloat(priceMax.value)
-    if (!isNaN(max)) result = result.filter(p => { const price = parseFloat(p.price); return !isNaN(price) && price <= max })
-  }
-  if (selectedCondition.value) result = result.filter(p => p.condition === selectedCondition.value)
-  if (selectedSort.value) {
-    switch (selectedSort.value) {
-      case 'newest':
-        result.sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0)); break
-      case 'price-low':
-        result.sort((a, b) => (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0)); break
-      case 'price-high':
-        result.sort((a, b) => (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0)); break
-      case 'views':
-        result.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)); break
-    }
-  }
-  return result
-})
+}
+
+/** 任一筛选条件变化都回到第一页：留在第 3 页会得到空列表 */
+function reloadFromFirstPage() {
+  paging.page = 1
+  fetchProducts()
+}
+
+function onPageChange(page) {
+  paging.page = page
+  fetchProducts()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 function go(path) { router.push(path) }
 function hideSearchSuggestions() { setTimeout(() => { showSearchSuggestions.value = false }, 200) }
@@ -374,8 +392,12 @@ async function fetchProducts() {
   loading.value = true
   error.value = ''
   try {
-    const res = await getProductList()
-    if (res.code === 200 && res.data) allProducts.value = res.data
+    const res = await getProductList(paging.page, paging.size, currentFilters())
+    if (res.code === 200 && res.data?.list) {
+      allProducts.value = res.data.list
+      // total 来自后端 count 查询，是筛选后的总命中数，不是当页条数
+      paging.total = res.data.total ?? 0
+    }
   } catch (e) {
     error.value = e.message || '加载商品失败'
   } finally {
@@ -383,10 +405,20 @@ async function fetchProducts() {
   }
 }
 
-async function handleSearch() { saveSearchHistory(searchKeyword.value); showSearchSuggestions.value = false }
-async function selectCategory(category) { activeCategory.value = category; showAdvancedFilters.value = false }
-function applyFilters() { validatePriceRange(); if (!priceError.value) showAdvancedFilters.value = false }
-function resetFilters() { priceMin.value = ''; priceMax.value = ''; priceError.value = ''; selectedCondition.value = ''; selectedSort.value = 'newest' }
+async function handleSearch() { saveSearchHistory(searchKeyword.value); showSearchSuggestions.value = false; reloadFromFirstPage() }
+async function selectCategory(category) { activeCategory.value = category; showAdvancedFilters.value = false; reloadFromFirstPage() }
+function applyFilters() { validatePriceRange(); if (!priceError.value) { showAdvancedFilters.value = false; reloadFromFirstPage() } }
+/** 成色：再点一次取消筛选，等价于不传该参数 */
+function toggleCondition(value) {
+  selectedCondition.value = selectedCondition.value === value ? '' : value
+  reloadFromFirstPage()
+}
+/** 排序：排序变化同样必须回到第一页，否则第 3 页在新的顺序下毫无意义 */
+function selectSort(value) {
+  selectedSort.value = value
+  reloadFromFirstPage()
+}
+function resetFilters() { priceMin.value = ''; priceMax.value = ''; priceError.value = ''; selectedCondition.value = ''; selectedSort.value = 'newest'; reloadFromFirstPage() }
 function validatePriceRange() {
   priceError.value = ''
   if (priceMin.value && priceMax.value) {
@@ -396,6 +428,7 @@ function validatePriceRange() {
 function clearAllFilters() {
   searchKeyword.value = ''; activeCategory.value = 'all'; priceMin.value = ''; priceMax.value = ''
   priceError.value = ''; selectedCondition.value = ''; selectedSort.value = 'newest'; showAdvancedFilters.value = false
+  reloadFromFirstPage()
 }
 function viewProduct(id) { router.push(`/products/${id}`) }
 function onCardMove(event) {
@@ -432,6 +465,9 @@ watch(() => route.fullPath, () => {
 </script>
 
 <style scoped>
+/* 服务端分页控件 */
+.pager { display: flex; justify-content: center; margin-top: var(--space-6); }
+
 /* 头部（与首页一致） */
 .site-header {
   position: sticky; top: 0; z-index: 100;

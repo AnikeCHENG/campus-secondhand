@@ -28,7 +28,15 @@
     </scm>
     <properties>
         <java.version>17</java.version>
-        <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <!--
+          MyBatis-Plus 版本以本 property 为唯一来源，依赖处统一引用 ${mybatis-plus.version}。
+          此前这里写 3.5.7 而依赖处硬编码 3.5.3.1，property 形同虚设：任何人「顺手修正」
+          成 3.5.7 都会让 jsqlparser 从传递依赖变成可选模块（3.5.3.2 起拆分），
+          PaginationInnerInterceptor 随之静默失效，所有分页退化为全表查询。
+          因此这里对齐到实际生效的 3.5.3.1；如需升级，须同时显式引入
+          com.baomidou:mybatis-plus-jsqlparser 并回归验证分页。
+        -->
+        <mybatis-plus.version>3.5.3.1</mybatis-plus.version>
     </properties>
 
     <pluginRepositories>
@@ -76,7 +84,7 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.5.3.1</version>
+            <version>${mybatis-plus.version}</version>
         </dependency>
 
         <!-- 安全相关 -->

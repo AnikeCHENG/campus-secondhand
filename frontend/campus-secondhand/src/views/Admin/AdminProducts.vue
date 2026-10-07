@@ -233,11 +233,11 @@ const fetchProducts = async () => {
         category: categoryFilter.value,
         status: statusFilter.value,
         page: page.value,
-        pageSize: pageSize.value
+        size: pageSize.value
       }
     })
     if (response.data.code === 200) {
-      products.value = response.data.data.items
+      products.value = response.data.data.list
       total.value = response.data.data.total
     } else {
       error.value = response.data.message || '获取商品列表失败'

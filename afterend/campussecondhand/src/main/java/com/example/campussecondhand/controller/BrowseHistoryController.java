@@ -1,5 +1,8 @@
 package com.example.campussecondhand.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.campussecondhand.common.PageParam;
+import com.example.campussecondhand.common.PageResult;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.repository.UserRepository;
@@ -46,15 +49,20 @@ public class BrowseHistoryController {
         }
     }
 
-    /** 浏览历史：按最近浏览时间倒序，最多 50 条 */
+    /** 浏览历史：按最近浏览时间倒序，物理分页（写入时已裁剪至最多 50 条） */
     @GetMapping("/list")
-    public ResponseEntity<ApiResponse<?>> list(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        List<Map<String, Object>> history = browseHistoryService.listHistory(userOpt.get().getId());
-        return ResponseEntity.ok(ApiResponse.success("获取成功", history));
+        PageParam paging = PageParam.of(page, size);
+        IPage<Map<String, Object>> result =
+                browseHistoryService.pageHistory(userOpt.get().getId(), paging);
+        return ResponseEntity.ok(ApiResponse.success("获取成功", PageResult.of(result)));
     }
 
     /** 清空我的浏览历史 */

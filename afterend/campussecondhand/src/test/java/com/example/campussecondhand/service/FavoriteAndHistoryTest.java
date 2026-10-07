@@ -1,5 +1,10 @@
 package com.example.campussecondhand.service;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.campussecondhand.common.PageParam;
+import org.mockito.ArgumentCaptor;
 import com.example.campussecondhand.entity.BrowseHistory;
 import com.example.campussecondhand.entity.Favorite;
 import com.example.campussecondhand.entity.Product;
@@ -58,9 +63,14 @@ class FavoriteAndHistoryTest {
         historyService = new BrowseHistoryService(browseHistoryRepository, productRepository);
     }
 
-    private Product product(int status) {
+private Product product(int status) {
+        return product(PRODUCT_ID, status);
+    }
+
+    /** 批量取回后要按 id 建索引，因此夹具必须能给出不同的 id，否则 toMap 会撞键 */
+    private Product product(Long id, int status) {
         Product p = new Product();
-        p.setId(PRODUCT_ID);
+        p.setId(id);
         p.setTitle("捷安特山地车");
         p.setPrice(new BigDecimal("380.00"));
         p.setImages("data:image/jpeg;base64,AAAA,data:image/jpeg;base64,BBBB");
@@ -115,33 +125,38 @@ class FavoriteAndHistoryTest {
 
     @Test
     void favorite_list_keeps_sold_product_and_marks_it() {
-        when(favoriteRepository.selectList(any())).thenReturn(List.of(favorite(PRODUCT_ID)));
-        when(productRepository.selectById(PRODUCT_ID)).thenReturn(product(ProductStatus.SOLD.getCode()));
+        when(favoriteRepository.selectPage(any(), any())).thenReturn(favoritePage(favorite(PRODUCT_ID), 1));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of(product(ProductStatus.SOLD.getCode())));
 
-        List<Map<String, Object>> list = favoriteService.listFavorites(USER_ID);
+        IPage<Map<String, Object>> page = favoriteService.pageFavorites(USER_ID, PageParam.of(1, 10));
 
         // 关键断言：已售出商品不得被过滤掉
-        assertThat(list).hasSize(1);
-        assertThat(list.get(0).get("status")).isEqualTo(ProductStatus.SOLD.getCode());
-        assertThat(list.get(0).get("statusLabel")).isEqualTo("已售出");
-        assertThat(list.get(0).get("deleted")).isEqualTo(false);
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords().get(0).get("status")).isEqualTo(ProductStatus.SOLD.getCode());
+        assertThat(page.getRecords().get(0).get("statusLabel")).isEqualTo("已售出");
+        assertThat(page.getRecords().get(0).get("deleted")).isEqualTo(false);
     }
 
     @Test
     void favorite_list_keeps_off_shelf_product() {
-        when(favoriteRepository.selectList(any())).thenReturn(List.of(favorite(PRODUCT_ID)));
-        when(productRepository.selectById(PRODUCT_ID)).thenReturn(product(ProductStatus.OFF_SHELF.getCode()));
+        when(favoriteRepository.selectPage(any(), any()))
+                .thenReturn(favoritePage(favorite(PRODUCT_ID), 1));
+        when(productRepository.selectBatchIds(any()))
+                .thenReturn(List.of(product(ProductStatus.OFF_SHELF.getCode())));
 
-        assertThat(favoriteService.listFavorites(USER_ID)).hasSize(1);
+        assertThat(favoriteService.pageFavorites(USER_ID, PageParam.of(1, 10)).getRecords()).hasSize(1);
     }
 
     @Test
     void favorite_list_returns_placeholder_when_product_was_hard_deleted() {
         // ProductService.delete 是硬删除，商品可能真的不存在
-        when(favoriteRepository.selectList(any())).thenReturn(List.of(favorite(PRODUCT_ID)));
-        when(productRepository.selectById(PRODUCT_ID)).thenReturn(null);
+        when(favoriteRepository.selectPage(any(), any()))
+                .thenReturn(favoritePage(favorite(PRODUCT_ID), 1));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
 
-        List<Map<String, Object>> list = favoriteService.listFavorites(USER_ID);
+        List<Map<String, Object>> list =
+                favoriteService.pageFavorites(USER_ID, PageParam.of(1, 10)).getRecords();
 
         assertThat(list).hasSize(1);
         assertThat(list.get(0).get("title")).isEqualTo("商品已删除");
@@ -150,13 +165,56 @@ class FavoriteAndHistoryTest {
 
     @Test
     void favorite_list_takes_only_first_image() {
-        when(favoriteRepository.selectList(any())).thenReturn(List.of(favorite(PRODUCT_ID)));
-        when(productRepository.selectById(PRODUCT_ID)).thenReturn(product(ProductStatus.ON_SALE.getCode()));
+        when(favoriteRepository.selectPage(any(), any()))
+                .thenReturn(favoritePage(favorite(PRODUCT_ID), 1));
+        when(productRepository.selectBatchIds(any()))
+                .thenReturn(List.of(product(ProductStatus.ON_SALE.getCode())));
 
-        List<Map<String, Object>> list = favoriteService.listFavorites(USER_ID);
+        List<Map<String, Object>> list =
+                favoriteService.pageFavorites(USER_ID, PageParam.of(1, 10)).getRecords();
 
         // base64 载荷内部含逗号，不能被截断
         assertThat(list.get(0).get("image")).isEqualTo("data:image/jpeg;base64,AAAA");
+    }
+
+    /**
+     * 回归测试：分页查询不能带 {@code .last("LIMIT ..")}。
+     *
+     * <p>历史读取原先拼了 {@code last("LIMIT 50")}。改物理分页后，MyBatis-Plus 的分页拦截器
+     * 会在同一条 SQL 尾部追加 {@code LIMIT ?, ?}，两者相撞会生成
+     * {@code ... LIMIT 50 LIMIT ?, ?} —— 直接 SQL 语法错误，接口 500。</p>
+     */
+    @Test
+    void favorite_page_query_does_not_inject_raw_limit() {
+        when(favoriteRepository.selectPage(any(), any()))
+                .thenReturn(favoritePage(favorite(PRODUCT_ID), 1));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
+
+        favoriteService.pageFavorites(USER_ID, PageParam.of(1, 10));
+
+        ArgumentCaptor<Wrapper> captor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(favoriteRepository).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getCustomSqlSegment().toUpperCase())
+                .doesNotContain("LIMIT");
+    }
+
+    /** 分页必须把 page/size 传给 MyBatis-Plus，由数据库真正截断 */
+    @Test
+    void favorite_page_passes_current_and_size_to_mappers() {
+        when(favoriteRepository.selectPage(any(), any()))
+                .thenReturn(favoritePage(List.of(favorite(PRODUCT_ID)), 137));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
+
+        IPage<Map<String, Object>> page = favoriteService.pageFavorites(USER_ID, PageParam.of(3, 20));
+
+        ArgumentCaptor<IPage> pageCaptor = ArgumentCaptor.forClass(IPage.class);
+        verify(favoriteRepository).selectPage(pageCaptor.capture(), any());
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(3);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(20);
+        // 总数取自 count 查询，不能因为手工组装 IPage 而丢成 0
+        assertThat(page.getTotal()).isEqualTo(137);
+        assertThat(page.getCurrent()).isEqualTo(3);
+        assertThat(page.getSize()).isEqualTo(20);
     }
 
     /**
@@ -196,6 +254,17 @@ class FavoriteAndHistoryTest {
         return f;
     }
 
+    /** 构造 selectPage 的返回值 */
+    private IPage<Favorite> favoritePage(List<Favorite> records, long total) {
+        Page<Favorite> p = new Page<>(1, 10, total);
+        p.setRecords(records);
+        return p;
+    }
+
+    private IPage<Favorite> favoritePage(Favorite single, long total) {
+        return favoritePage(List.of(single), total);
+    }
+
     // ==================== 浏览历史 ====================
 
     private BrowseHistory history(Long productId, LocalDateTime time) {
@@ -229,28 +298,74 @@ class FavoriteAndHistoryTest {
         assertThat(BrowseHistoryService.MAX_HISTORY).isEqualTo(50);
     }
 
+    /**
+     * 保留 50 条的规则现在由<b>写入时</b>的 {@code trimToRecent} 保证
+     * （见 {@link #record_view_upserts_then_trims}），读取时不再拼 LIMIT。
+     */
     @Test
-    void history_list_is_capped_at_fifty() {
+    void history_cap_is_enforced_on_write_not_on_read() {
         List<BrowseHistory> rows = new java.util.ArrayList<>();
         for (long i = 1; i <= 50; i++) {
             rows.add(history(i, LocalDateTime.now().minusMinutes(i)));
         }
-        when(browseHistoryRepository.selectList(any())).thenReturn(rows);
-        when(productRepository.selectById(any())).thenReturn(product(ProductStatus.ON_SALE.getCode()));
+        when(browseHistoryRepository.selectPage(any(), any())).thenReturn(historyPage(rows, 50));
+        when(productRepository.selectBatchIds(any()))
+                .thenReturn(List.of(product(ProductStatus.ON_SALE.getCode())));
 
-        assertThat(historyService.listHistory(USER_ID)).hasSize(50);
+        IPage<Map<String, Object>> page = historyService.pageHistory(USER_ID, PageParam.of(1, 100));
+
+        assertThat(page.getRecords()).hasSize(50);
+        assertThat(page.getTotal()).isEqualTo(50);
+    }
+
+    /**
+     * 回归测试：历史查询不能带 {@code .last("LIMIT 50")}。
+     *
+     * <p>留着它会与分页拦截器追加的 {@code LIMIT ?, ?} 撞成
+     * {@code LIMIT 50 LIMIT ?, ?}，SQL 语法错误、接口 500。</p>
+     */
+    @Test
+    void history_page_query_does_not_inject_raw_limit() {
+        when(browseHistoryRepository.selectPage(any(), any()))
+                .thenReturn(historyPage(List.of(history(1L, LocalDateTime.now())), 1));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
+
+        historyService.pageHistory(USER_ID, PageParam.of(1, 10));
+
+        ArgumentCaptor<Wrapper> captor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(browseHistoryRepository).selectPage(any(), captor.capture());
+        assertThat(captor.getValue().getCustomSqlSegment().toUpperCase())
+                .doesNotContain("LIMIT");
+    }
+
+    /** 分页必须把 page/size 传给 MyBatis-Plus，总数取自 count 查询 */
+    @Test
+    void history_page_passes_current_and_size_to_mappers() {
+        when(browseHistoryRepository.selectPage(any(), any()))
+                .thenReturn(historyPage(List.of(history(1L, LocalDateTime.now())), 42));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
+
+        IPage<Map<String, Object>> page = historyService.pageHistory(USER_ID, PageParam.of(2, 5));
+
+        ArgumentCaptor<IPage> pageCaptor = ArgumentCaptor.forClass(IPage.class);
+        verify(browseHistoryRepository).selectPage(pageCaptor.capture(), any());
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(2);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(5);
+        assertThat(page.getTotal()).isEqualTo(42);
     }
 
     @Test
     void history_list_returns_newest_first_and_marks_sold() {
         LocalDateTime now = LocalDateTime.now();
-        // selectList 已按 last_view_time DESC 排序，这里模拟 A 最新、B 较旧
-        when(browseHistoryRepository.selectList(any())).thenReturn(List.of(
-                history(1L, now), history(2L, now.minusMinutes(5))));
-        when(productRepository.selectById(1L)).thenReturn(product(ProductStatus.SOLD.getCode()));
-        when(productRepository.selectById(2L)).thenReturn(product(ProductStatus.ON_SALE.getCode()));
+        // selectPage 已按 last_view_time DESC 排序，这里模拟 A 最新、B 较旧
+        when(browseHistoryRepository.selectPage(any(), any())).thenReturn(historyPage(List.of(
+                history(1L, now), history(2L, now.minusMinutes(5))), 2));
+when(productRepository.selectBatchIds(any())).thenReturn(List.of(
+                product(1L, ProductStatus.SOLD.getCode()),
+                product(2L, ProductStatus.ON_SALE.getCode())));
 
-        List<Map<String, Object>> list = historyService.listHistory(USER_ID);
+        IPage<Map<String, Object>> page = historyService.pageHistory(USER_ID, PageParam.of(1, 10));
+        List<Map<String, Object>> list = page.getRecords();
 
         assertThat(list).hasSize(2);
         assertThat(list.get(0).get("productId")).isEqualTo(1L);
@@ -260,12 +375,20 @@ class FavoriteAndHistoryTest {
 
     @Test
     void history_list_handles_deleted_product() {
-        when(browseHistoryRepository.selectList(any())).thenReturn(List.of(history(9L, LocalDateTime.now())));
-        when(productRepository.selectById(9L)).thenReturn(null);
+        when(browseHistoryRepository.selectPage(any(), any()))
+                .thenReturn(historyPage(List.of(history(9L, LocalDateTime.now())), 1));
+        when(productRepository.selectBatchIds(any())).thenReturn(List.of());
 
-        List<Map<String, Object>> list = historyService.listHistory(USER_ID);
+        IPage<Map<String, Object>> page = historyService.pageHistory(USER_ID, PageParam.of(1, 10));
 
-        assertThat(list.get(0).get("title")).isEqualTo("商品已删除");
+        assertThat(page.getRecords().get(0).get("title")).isEqualTo("商品已删除");
+        assertThat(page.getRecords().get(0).get("deleted")).isEqualTo(true);
+    }
+
+    private IPage<BrowseHistory> historyPage(List<BrowseHistory> records, long total) {
+        Page<BrowseHistory> p = new Page<>(1, 10, total);
+        p.setRecords(records);
+        return p;
     }
 
     @Test

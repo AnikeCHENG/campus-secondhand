@@ -1,5 +1,8 @@
 package com.example.campussecondhand.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.campussecondhand.common.PageParam;
+import com.example.campussecondhand.common.PageResult;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.repository.ProductRepository;
@@ -54,15 +57,20 @@ public class FavoriteController {
         }
     }
 
-    /** 我的收藏：含商品图/标题/价格/状态，按收藏时间倒序 */
+    /** 我的收藏：含商品图/标题/价格/状态，按收藏时间倒序，物理分页 */
     @GetMapping("/list")
-    public ResponseEntity<ApiResponse<?>> list(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
-        List<Map<String, Object>> list = favoriteService.listFavorites(userOpt.get().getId());
-        return ResponseEntity.ok(ApiResponse.success("获取成功", list));
+        PageParam paging = PageParam.of(page, size);
+        IPage<Map<String, Object>> result =
+                favoriteService.pageFavorites(userOpt.get().getId(), paging);
+        return ResponseEntity.ok(ApiResponse.success("获取成功", PageResult.of(result)));
     }
 
     /**

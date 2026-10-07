@@ -1,5 +1,8 @@
 package com.example.campussecondhand.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.campussecondhand.common.PageParam;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.repository.ProductRepository;
@@ -24,8 +27,63 @@ public class ProductService {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * 全量在售商品。<b>仅供一次性数据迁移脚本使用</b>——见
+     * {@code ProductController#updateImages}：该端点要遍历全部商品并逐个改图或删除，
+     * 分页会漏掉不在当前页的记录，语义上必须是全量。
+     *
+     * <p>面向用户的列表请改用 {@link #pageAvailable}，那是带 LIMIT 的物理分页。</p>
+     */
     public List<Product> findAllAvailable() {
         return productRepository.findByStatus(ProductStatus.ON_SALE.getCode());
+    }
+
+    /**
+     * 大厅在售商品的<b>物理分页</b>查询：筛选与排序全部下推到 SQL。
+     *
+     * <p>此前大厅把全量商品一次性返回、由前端在内存里做分类/关键词/价格/成色过滤与排序。
+     * 改成服务端分页后若仍保留那套前端逻辑，筛选只会作用在当前页的十几条记录上，
+     * 结果直接失真——所以筛选与排序必须与分页在同一条 SQL 内完成。</p>
+     *
+     * <p>{@code condition} 是 MySQL 保留字（建表语句中已加反引号），
+     * {@code eq("condition", …)} 会直接语法报错，必须写成 {@code `condition`}。</p>
+     *
+     * @param paging 分页参数（已由 {@code PageParam} 校验）
+     * @param sort   {@code newest} / {@code priceAsc} / {@code priceDesc} / {@code hot}，
+     *               未知值按 {@code newest} 处理
+     */
+    public IPage<Product> pageAvailable(PageParam paging, String category, String keyword,
+                                        BigDecimal minPrice, BigDecimal maxPrice,
+                                        String condition, String sort) {
+        QueryWrapper<Product> wrapper = new QueryWrapper<>();
+        wrapper.eq("status", ProductStatus.ON_SALE.getCode());
+
+        if (category != null && !category.isBlank()) {
+            wrapper.eq("category", category);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            // 用 and(...) 包裹，避免 OR 泄漏到后续价格等条件之外
+            wrapper.and(q -> q.like("title", keyword).or().like("description", keyword));
+        }
+        if (minPrice != null) {
+            wrapper.ge("price", minPrice);
+        }
+        if (maxPrice != null) {
+            wrapper.le("price", maxPrice);
+        }
+        if (condition != null && !condition.isBlank()) {
+            // 反引号不可省：condition 是 SQL 保留字
+            wrapper.eq("`condition`", condition);
+        }
+
+        switch (sort == null ? "" : sort) {
+            case "priceAsc" -> wrapper.orderByAsc("price");
+            case "priceDesc" -> wrapper.orderByDesc("price");
+            case "hot" -> wrapper.orderByDesc("view_count");
+            default -> wrapper.orderByDesc("created_time");
+        }
+
+        return productRepository.selectPage(paging.toPage(), wrapper);
     }
 
     public List<Product> findByUserId(Long userId) {

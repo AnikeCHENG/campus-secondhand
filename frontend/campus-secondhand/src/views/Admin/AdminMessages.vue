@@ -96,11 +96,11 @@ const fetchMessages = async () => {
       params: {
         search: searchQuery.value,
         page: page.value,
-        pageSize: pageSize.value
+        size: pageSize.value
       }
     })
     if (response.data && response.data.data) {
-      messages.value = response.data.data.items
+      messages.value = response.data.data.list
       total.value = response.data.data.total
     }
   } catch (error) {

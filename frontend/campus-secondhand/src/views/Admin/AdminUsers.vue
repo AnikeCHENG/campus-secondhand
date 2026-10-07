@@ -117,11 +117,11 @@ const fetchUsers = async () => {
       params: {
         search: searchQuery.value,
         page: page.value,
-        pageSize: pageSize.value
+        size: pageSize.value
       }
     })
     if (response.data && response.data.data) {
-      users.value = response.data.data.items
+      users.value = response.data.data.list
       total.value = response.data.data.total
     }
   } catch (error) {

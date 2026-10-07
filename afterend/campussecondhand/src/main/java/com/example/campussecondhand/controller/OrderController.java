@@ -1,6 +1,11 @@
 package com.example.campussecondhand.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.example.campussecondhand.common.PageParam;
+import com.example.campussecondhand.common.PageResult;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Product;
@@ -65,74 +70,86 @@ public class OrderController {
         }
     }
 
+/**
+     * 与我相关的订单（我买到的 + 我卖出的），物理分页。
+     *
+     * <p>商品与卖家信息按当页 id 批量补齐，避免每条订单两次 selectById 的 N+1；
+     * 输出字段与改造前完全一致，前端契约不变。</p>
+     */
     @GetMapping("/my")
-    public ResponseEntity<ApiResponse<?>> getMyOrders(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<?>> getMyOrders(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         Optional<User> userOpt = getUserFromToken(authHeader);
         if (userOpt.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
         }
+        PageParam paging = PageParam.of(page, size);
         Long userId = userOpt.get().getId();
-        QueryWrapper<Order> wrapper = new QueryWrapper<>();
-        wrapper.eq("buyer_id", userId).or().eq("seller_id", userId);
-        List<Order> orders = orderRepository.selectList(wrapper);
-        
-        // 转换为前端期望的格式
-        List<Map<String, Object>> orderList = new ArrayList<>();
+
+        IPage<Order> paged = orderRepository.selectPage(
+                paging.toPage(),
+                new QueryWrapper<Order>()
+                        // OR 必须整体包进 and(...)，否则会泄漏到后续追加的条件之外
+                        .and(q -> q.eq("buyer_id", userId).or().eq("seller_id", userId))
+                        .orderByDesc("created_time", "id"));
+
+        List<Map<String, Object>> orderList = toOrderViews(paged.getRecords());
+
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                PageResult.of(orderList, paged.getTotal(), paging)));
+    }
+
+    /**
+     * 订单列表项组装：批量取商品与卖家，字段保持与历史实现一致。
+     *
+     * <p>图片是 base64 Data URL，载荷内含逗号，必须用 firstImage 而非 split(",")。</p>
+     */
+    private List<Map<String, Object>> toOrderViews(List<Order> orders) {
+        List<Long> productIds = orders.stream()
+                .map(Order::getProductId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, Product> products = productIds.isEmpty() ? Map.of()
+                : productRepository.selectBatchIds(productIds).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> p));
+
+        List<Long> sellerIds = orders.stream()
+                .map(Order::getSellerId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, User> sellers = sellerIds.isEmpty() ? Map.of()
+                : userRepository.selectBatchIds(sellerIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+        List<Map<String, Object>> result = new ArrayList<>();
         for (Order order : orders) {
             Map<String, Object> orderMap = new HashMap<>();
             // id 必须是订单主键：前端后续用它在 /api/orders/{id} 上做支付/取消/收货
             orderMap.put("id", order.getId());
             orderMap.put("orderNo", order.getOrderNo());
             orderMap.put("productId", order.getProductId());
-            
-            // 获取商品信息
-            Product product = productRepository.selectById(order.getProductId());
+
+            Product product = products.get(order.getProductId());
             if (product != null) {
                 orderMap.put("productTitle", product.getTitle());
-                // 图片是 base64 Data URL，载荷内含逗号，必须用 firstImage 而非 split(",")
                 orderMap.put("productImage", OrderService.firstImage(product.getImages()));
             } else {
                 orderMap.put("productTitle", "商品已删除");
                 orderMap.put("productImage", "");
             }
-            
+
             orderMap.put("price", order.getPrice() != null ? order.getPrice().toString() : "0");
             orderMap.put("status", order.getStatus());
             orderMap.put("createdAt", order.getCreatedTime() != null ? order.getCreatedTime().toString() : "");
             orderMap.put("sellerId", order.getSellerId());
-            
-            // 获取卖家信息
-            User seller = userRepository.selectById(order.getSellerId());
+
+            User seller = sellers.get(order.getSellerId());
             orderMap.put("sellerName", seller != null ? seller.getUsername() : "未知卖家");
-            
-            orderList.add(orderMap);
-        }
-        
-        return ResponseEntity.ok(ApiResponse.success("获取成功", orderList));
-    }
 
-    @GetMapping("/my/buyer")
-    public ResponseEntity<ApiResponse<?>> getMyBuyerOrders(@RequestHeader("Authorization") String authHeader) {
-        Optional<User> userOpt = getUserFromToken(authHeader);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
-        }
-        QueryWrapper<Order> wrapper = new QueryWrapper<>();
-        wrapper.eq("buyer_id", userOpt.get().getId());
-        List<Order> orders = orderRepository.selectList(wrapper);
-        return ResponseEntity.ok(ApiResponse.success("获取成功", orders));
-    }
+            // 补齐买卖双方 ID：前端聊天页按 userId 开会话，缺了它无从发起
+            orderMap.put("buyerId", order.getBuyerId());
 
-    @GetMapping("/my/seller")
-    public ResponseEntity<ApiResponse<?>> getMySellerOrders(@RequestHeader("Authorization") String authHeader) {
-        Optional<User> userOpt = getUserFromToken(authHeader);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
+            result.add(orderMap);
         }
-        QueryWrapper<Order> wrapper = new QueryWrapper<>();
-        wrapper.eq("seller_id", userOpt.get().getId());
-        List<Order> orders = orderRepository.selectList(wrapper);
-        return ResponseEntity.ok(ApiResponse.success("获取成功", orders));
+        return result;
     }
 
     @GetMapping("/{id}")

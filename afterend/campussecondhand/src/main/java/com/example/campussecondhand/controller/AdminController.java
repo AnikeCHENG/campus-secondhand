@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.campussecondhand.service.AdminStatsService;
 import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.common.PageParam;
+import com.example.campussecondhand.common.PageResult;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.example.campussecondhand.entity.Product;
@@ -61,41 +63,28 @@ public class AdminController {
 
     // ==================== 用户管理 ====================
 
-    // 获取所有用户
+// 获取所有用户
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<?>> getAllUsers(
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer size) {
         // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
-        PageParam paging = PageParam.of(page, pageSize);
+        PageParam paging = PageParam.of(page, size);
 
-// 构建查询条件
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<User> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
-            wrapper.like("username", search).or().like("email", search);
+            // OR 必须包进 and(...)：否则后续追加的条件会被 OR 拆开
+            wrapper.and(q -> q.like("username", search).or().like("email", search));
         }
+        wrapper.orderByDesc("created_time", "id");
 
-        // 计算分页参数
-        long offset = paging.offset();
+        // 物理分页：由分页拦截器拼 LIMIT，不是查出全量再在内存里 skip/limit
+        IPage<User> paged = userRepository.selectPage(paging.toPage(), wrapper);
 
-        // 查询用户列表
-        List<User> users = userRepository.selectList(wrapper.orderByDesc("created_time"));
-        // 手动分页
-        List<User> paginatedUsers = users.stream()
-                .skip(offset)
-                .limit(paging.size())
-                .collect(java.util.stream.Collectors.toList());
-
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("items", paginatedUsers);
-        result.put("total", users.size());
-        result.put("page", paging.page());
-        result.put("pageSize", paging.size());
-
-        return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                PageResult.of(paged.getRecords(), paged.getTotal(), paging)));
     }
 
     // 获取用户详情
@@ -137,14 +126,13 @@ User user = userRepository.selectById(id);
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer size) {
         // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
-        PageParam paging = PageParam.of(page, pageSize);
+        PageParam paging = PageParam.of(page, size);
 
-// 构建查询条件
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Product> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Product> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
-            wrapper.like("title", search).or().like("description", search);
+            wrapper.and(q -> q.like("title", search).or().like("description", search));
         }
         if (category != null && !category.isEmpty()) {
             wrapper.eq("category", category);
@@ -152,26 +140,13 @@ User user = userRepository.selectById(id);
         if (status != null) {
             wrapper.eq("status", status);
         }
+        wrapper.orderByDesc("created_time", "id");
 
-        // 计算分页参数
-        long offset = paging.offset();
+        // 物理分页：由分页拦截器拼 LIMIT
+        IPage<Product> paged = productRepository.selectPage(paging.toPage(), wrapper);
 
-        // 查询商品列表
-        List<Product> products = productRepository.selectList(wrapper.orderByDesc("created_time"));
-        // 手动分页
-        List<Product> paginatedProducts = products.stream()
-                .skip(offset)
-                .limit(paging.size())
-                .collect(java.util.stream.Collectors.toList());
-
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("items", paginatedProducts);
-        result.put("total", products.size());
-        result.put("page", paging.page());
-        result.put("pageSize", paging.size());
-
-        return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                PageResult.of(paged.getRecords(), paged.getTotal(), paging)));
     }
 
     // 获取商品详情
@@ -255,35 +230,21 @@ List<?> rawIds = (List<?>) params.get("ids");
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer size) {
         // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
-        PageParam paging = PageParam.of(page, pageSize);
+        PageParam paging = PageParam.of(page, size);
 
-// 构建查询条件
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Order> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (status != null) {
             wrapper.eq("status", status);
         }
+        wrapper.orderByDesc("created_time", "id");
 
-        // 计算分页参数
-        long offset = paging.offset();
+        // 物理分页：由分页拦截器拼 LIMIT
+        IPage<Order> paged = orderRepository.selectPage(paging.toPage(), wrapper);
 
-        // 查询订单列表
-        List<Order> orders = orderRepository.selectList(wrapper.orderByDesc("created_time"));
-        // 手动分页
-        List<Order> paginatedOrders = orders.stream()
-                .skip(offset)
-                .limit(paging.size())
-                .collect(java.util.stream.Collectors.toList());
-
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("items", paginatedOrders);
-        result.put("total", orders.size());
-        result.put("page", paging.page());
-        result.put("pageSize", paging.size());
-
-        return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                PageResult.of(paged.getRecords(), paged.getTotal(), paging)));
     }
 
     // 获取订单详情
@@ -347,38 +308,24 @@ Order order = orderRepository.selectById(id);
             @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer size) {
         // 分页参数统一校验：page<1 或 size 越界直接 400，不再静默纠正
-        PageParam paging = PageParam.of(page, pageSize);
+        PageParam paging = PageParam.of(page, size);
 
-// 构建查询条件
-        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Message> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Message> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         if (search != null && !search.isEmpty()) {
             wrapper.like("content", search);
         }
+        // 排序与分页都交给 SQL：原来先查全量再在内存里 filter/sorted/skip，
+        // 既是假分页，也会把 created_time 为 null 的行悄悄滤掉导致 total 对不上
+        wrapper.isNotNull("created_time")
+                .orderByDesc("created_time", "id");
 
-        // 计算分页参数
-        long offset = paging.offset();
+        // 物理分页：由分页拦截器拼 LIMIT
+        IPage<Message> paged = messageRepository.selectPage(paging.toPage(), wrapper);
 
-        // 查询消息列表
-        List<Message> messages = messageRepository.selectList(wrapper).stream()
-                .filter(m -> m.getCreatedTime() != null)
-                .sorted((m1, m2) -> m2.getCreatedTime().compareTo(m1.getCreatedTime()))
-                .collect(java.util.stream.Collectors.toList());
-        // 手动分页
-        List<Message> paginatedMessages = messages.stream()
-                .skip(offset)
-                .limit(paging.size())
-                .collect(java.util.stream.Collectors.toList());
-
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("items", paginatedMessages);
-        result.put("total", messages.size());
-        result.put("page", paging.page());
-        result.put("pageSize", paging.size());
-
-        return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+        return ResponseEntity.ok(ApiResponse.success("获取成功",
+                PageResult.of(paged.getRecords(), paged.getTotal(), paging)));
     }
 
     // 删除消息

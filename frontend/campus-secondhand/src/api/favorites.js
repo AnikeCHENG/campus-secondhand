@@ -34,9 +34,9 @@ async function request(path, options = {}) {
 
 // ==================== 收藏 ====================
 
-/** 我的收藏：含商品图/标题/价格/状态，按收藏时间倒序 */
-export async function getFavoriteList() {
-  return await request('/favorites/list', { method: 'GET' })
+/** 我的收藏（服务端分页）：含商品图/标题/价格/状态，按收藏时间倒序；返回 { list, total, page, size } */
+export async function getFavoriteList(page = 1, size = 10) {
+  return await request(`/favorites/list?page=${page}&size=${size}`, { method: 'GET' })
 }
 
 /** 是否已收藏，供详情页回显；未登录时后端返回 false，不报错 */
@@ -56,9 +56,9 @@ export async function removeFavoriteById(productId) {
 
 // ==================== 浏览历史 ====================
 
-/** 浏览历史：按最近浏览时间倒序，最多 50 条 */
-export async function getHistoryList() {
-  return await request('/history/list', { method: 'GET' })
+/** 浏览历史（服务端分页）：按最近浏览时间倒序；返回 { list, total, page, size } */
+export async function getHistoryList(page = 1, size = 10) {
+  return await request(`/history/list?page=${page}&size=${size}`, { method: 'GET' })
 }
 
 /** 清空浏览历史 */

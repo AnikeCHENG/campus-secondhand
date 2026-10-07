@@ -132,11 +132,11 @@ const fetchOrders = async () => {
         // 后端签名是 Integer status，空串会导致 400 类型转换失败
         ...(statusFilter.value !== '' && { status: Number(statusFilter.value) }),
         page: page.value,
-        pageSize: pageSize.value
+        size: pageSize.value
       }
     })
     if (response.data && response.data.data) {
-      orders.value = response.data.data.items
+      orders.value = response.data.data.list
       total.value = response.data.data.total
     }
   } catch (error) {

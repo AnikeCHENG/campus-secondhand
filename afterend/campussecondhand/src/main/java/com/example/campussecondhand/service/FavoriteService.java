@@ -1,5 +1,12 @@
 package com.example.campussecondhand.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.campussecondhand.common.PageParam;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import com.example.campussecondhand.entity.Favorite;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.enums.ProductStatus;
@@ -76,7 +83,7 @@ public class FavoriteService {
     }
 
     /**
-     * 我的收藏列表，按收藏时间倒序。
+     * 我的收藏列表（物理分页），按收藏时间倒序。
      *
      * <p>商品已售出（status=2）或已下架（status=0）**依然返回**，
      * 由前端加「已售出」角标置灰，而不是在后端过滤掉——
@@ -84,24 +91,44 @@ public class FavoriteService {
      *
      * <p>商品被物理删除时（{@code ProductService.delete} 是硬删除），
      * 返回「商品已删除」占位，避免前端拿到 null 字段崩溃。</p>
+     *
+     * <p>商品按当页 id 批量查询，而不是逐条 selectById——
+     * 分页后单页最多 100 条，逐条查会产生 100 次往返。</p>
      */
-    public List<Map<String, Object>> listFavorites(Long userId) {
-        List<Favorite> favorites = favoriteRepository.selectList(
+    public IPage<Map<String, Object>> pageFavorites(Long userId, PageParam paging) {
+        IPage<Favorite> favoritePage = favoriteRepository.selectPage(
+                paging.toPage(),
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Favorite>()
                         .eq("user_id", userId)
                         // created_time 只有秒级精度，追加 id 作为 tiebreaker 保证顺序确定
                         .orderByDesc("created_time", "id"));
 
-        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        List<Favorite> favorites = favoritePage.getRecords();
+        Map<Long, Product> products = loadProducts(
+                favorites.stream().map(Favorite::getProductId).toList());
+
+        List<Map<String, Object>> items = new ArrayList<>();
         for (Favorite favorite : favorites) {
-            Product product = productRepository.selectById(favorite.getProductId());
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("productId", favorite.getProductId());
             item.put("createTime", favorite.getCreatedTime());
-            applyProduct(item, product);
-            result.add(item);
+            applyProduct(item, products.get(favorite.getProductId()));
+            items.add(item);
         }
+
+        IPage<Map<String, Object>> result = new Page<>(paging.page(), paging.size(), favoritePage.getTotal());
+        result.setRecords(items);
         return result;
+    }
+
+    /** 批量取商品并按 id 建索引；入参为空时返回空 Map，不发空 SQL */
+    private Map<Long, Product> loadProducts(List<Long> productIds) {
+        List<Long> distinct = productIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (distinct.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return productRepository.selectBatchIds(distinct).stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
     }
 
     /** 把商品字段填入列表项；商品已删除时给出占位 */
