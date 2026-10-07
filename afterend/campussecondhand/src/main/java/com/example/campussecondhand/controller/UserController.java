@@ -4,6 +4,7 @@ import com.example.campussecondhand.common.ApiResponse;
 import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.exception.BadRequestException;
 import com.example.campussecondhand.service.ReviewService;
+import com.example.campussecondhand.service.PostService;
 import com.example.campussecondhand.service.StudentVerifyService;
 import java.util.LinkedHashMap;
 import com.example.campussecondhand.repository.UserRepository;
@@ -35,6 +36,64 @@ public class UserController {
     private ReviewService reviewService;
 
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
+    @Autowired
+    private PostService postService;
+
+    /**
+     * 大厅左侧用户名片：昵称 / 头像 / 认证 / 年级 / 三条统计，一次接口返回。
+     *
+     * <p>nickname 字段：users 表当前没有该列，按裁决以 username 兜底
+     * （「昵称可编辑」已记入答辩后 TODO）。</p>
+     *
+     * <p>grade：从学号解析入学年份，如 {@code 202012345678 → "2020级"}。
+     * 学号为空或格式不匹配时返回 {@code null}，前端据此隐藏年级区域，
+     * 绝不用「未知年级」之类的占位文案冒充真实数据。</p>
+     */
+    @GetMapping("/hall-profile")
+    public ResponseEntity<ApiResponse<?>> hallProfile(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            Optional<User> userOpt = getUserFromToken(authHeader);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
+            }
+            User user = userOpt.get();
+
+            Map<String, Object> profile = new LinkedHashMap<>();
+            profile.put("nickname", user.getUsername());
+            profile.put("avatar", user.getAvatar());
+            profile.put("verified", Integer.valueOf(1).equals(user.getIsStudentVerified()));
+            profile.put("grade", parseGrade(user.getStudentNo()));
+            profile.put("stats", postService.countStats(user.getId()));
+
+            return ResponseEntity.ok(ApiResponse.success("获取成功", profile));
+        } catch (Exception e) {
+            log.error("获取大厅名片失败: ", e);
+            return ResponseEntity.ok(ApiResponse.error(500, "获取名片失败"));
+        }
+    }
+
+    /**
+     * 从学号解析年级标签。
+     *
+     * <p>规则：取前 4 位，必须是 4 位纯数字且落在 1980~2100 之间，
+     * 才认定为入学年份并拼出「{年份}级」。任一条件不满足返回 null。</p>
+     */
+    private static String parseGrade(String studentNo) {
+        if (studentNo == null || studentNo.trim().length() < 4) {
+            return null;
+        }
+        String prefix = studentNo.trim().substring(0, 4);
+        if (!prefix.matches("\\d{4}")) {
+            return null;
+        }
+        int year = Integer.parseInt(prefix);
+        if (year < 1980 || year > 2100) {
+            return null;
+        }
+        return year + "级";
+    }
 
     private Optional<User> getUserFromToken(String token) {
         try {
