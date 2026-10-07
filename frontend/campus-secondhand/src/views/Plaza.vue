@@ -14,67 +14,189 @@
 
     <main class="plaza-shell">
       <aside class="plaza-left">
+        <!-- 用户名片：字段取不到就隐藏对应区域，不显示占位文案 -->
         <section class="card plaza-user">
-          <div class="avatar avatar-lg">我</div>
-          <h2>同学昵称</h2>
-          <p>计算机学院 · 2023级</p>
-          <div class="user-stats">
-            <span><b>12</b>动态</span>
-            <span><b>8</b>在售</span>
-            <span><b>3</b>求购</span>
+          <div class="avatar avatar-lg">
+            <img v-if="profile?.avatar" :src="profile.avatar" :alt="`${profile.nickname} 的头像`" />
+            <template v-else>{{ (profile?.nickname || '?').charAt(0) }}</template>
           </div>
+          <h2>
+            {{ profile?.nickname }}
+            <VerifiedBadge v-if="profile?.verified" :verified="true" size="sm" />
+          </h2>
+          <p v-if="profile?.grade">{{ profile.grade }}</p>
+          <div v-if="profile?.stats" class="user-stats">
+            <span><b>{{ profile.stats.posts }}</b>动态</span>
+            <span><b>{{ profile.stats.selling }}</b>在售</span>
+            <span><b>{{ profile.stats.seeking }}</b>求购</span>
+          </div>
+          <p v-else-if="profileError" class="user-hint">{{ profileError }}</p>
         </section>
 
-        <button class="plaza-post-btn" type="button">+ 发布动态/商品</button>
+        <button class="plaza-post-btn" type="button" @click="openComposer">+ 发布动态/商品</button>
 
         <section class="card plaza-filter">
           <h3>分类筛选</h3>
-          <button v-for="item in filters" :key="item.value" type="button" :class="{ active: activeFilter === item.value }" @click="activeFilter = item.value">
+          <button
+            v-for="item in filters"
+            :key="item.value"
+            type="button"
+            :class="{ active: activeFilter === item.value }"
+            @click="setFilter(item.value)"
+          >
             {{ item.label }}
           </button>
         </section>
       </aside>
 
       <section class="plaza-feed">
-        <div class="card feed-composer">
-          <button type="button">分享动态、发起求购，或把閒置挂上大厅…</button>
+        <!-- 发布器 -->
+        <div v-if="composerOpen" class="card feed-composer">
+          <div class="composer-types">
+            <button
+              v-for="t in typeOptions"
+              :key="t.value"
+              type="button"
+              :class="{ active: draft.type === t.value }"
+              @click="draft.type = t.value"
+            >
+              {{ t.label }}
+            </button>
+          </div>
+
+          <textarea
+            v-model="draft.content"
+            class="composer-textarea"
+            rows="3"
+            :placeholder="composerPlaceholder"
+          ></textarea>
+
+          <div class="composer-images">
+            <div v-for="(img, i) in draft.images" :key="i" class="uploaded-image">
+              <img :src="img" :alt="`已上传第${i + 1}张图片`" />
+              <button class="remove-image" type="button" @click="removeImage(i)">×</button>
+            </div>
+            <label v-if="draft.images.length < 9" class="upload-button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span>上传图片</span>
+              <input type="file" accept="image/*" multiple hidden @change="handleImageUpload" />
+            </label>
+          </div>
+
+          <!-- 仅 SELL/FREE 显示商品信息 -->
+          <div v-if="needsProductInfo" class="composer-product">
+            <label class="cp-field">
+              <span>商品标题 <em>*</em></span>
+              <input v-model="draft.productTitle" type="text" placeholder="例：九成新自行车，附送车锁" />
+            </label>
+            <label class="cp-field cp-field--price">
+              <span>价格（元）<em v-if="draft.type === 'SELL'">*</em></span>
+              <input
+                v-model="draft.productPrice"
+                type="number"
+                min="0"
+                step="0.01"
+                :placeholder="draft.type === 'FREE' ? '免费送可留空' : '必填'"
+              />
+            </label>
+          </div>
+          <p v-if="draftError" class="composer-error">{{ draftError }}</p>
+
+          <div class="composer-actions">
+            <button type="button" class="cp-cancel" @click="composerOpen = false">取消</button>
+            <button type="button" class="cp-submit" :disabled="submitting" @click="submitPost">
+              {{ submitting ? '发布中…' : '发布' }}
+            </button>
+          </div>
+        </div>
+        <div v-else class="card feed-composer">
+          <button type="button" @click="openComposer">分享动态、发起求购，或把闲置挂上大厅…</button>
         </div>
 
-        <article v-for="post in filteredPosts" :key="post.id" class="card feed-card">
+        <!-- 加载失败 -->
+        <div v-if="feedError" class="card feed-state">
+          <p>{{ feedError }}</p>
+          <button type="button" @click="loadFeed">重试</button>
+        </div>
+
+        <!-- 骨架屏 -->
+        <div v-else-if="loading" class="card feed-skeleton">
+          <div class="sk sk-row"></div>
+          <div class="sk sk-line"></div>
+          <div class="sk sk-line sk-line--short"></div>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="posts.length === 0" class="card feed-state">
+          <p>{{ activeFilter === 'all' ? '大厅还没有动态，来发第一条吧' : '该分类下暂无动态' }}</p>
+          <button type="button" @click="activeFilter = 'all'; loadFeed()">查看全部动态</button>
+        </div>
+
+        <article v-for="post in posts" :key="post.id" class="card feed-card">
           <header class="feed-head">
-            <div class="avatar">{{ post.user[0] }}</div>
-            <div class="feed-meta">
-              <b>{{ post.user }}</b>
-              <span>{{ post.time }} · {{ post.location }}</span>
+            <div class="avatar">
+              <img v-if="post.author?.avatar" :src="post.author.avatar" :alt="`${post.author.username} 的头像`" />
+              <template v-else>{{ (post.author?.username || '?').charAt(0) }}</template>
             </div>
-            <em class="badge" :data-type="post.type">{{ post.typeIcon }} {{ post.typeLabel }}</em>
+            <div class="feed-meta">
+              <b>{{ post.author?.username }}</b>
+              <span>
+                {{ formatTime(post.createdTime) }}
+                <template v-if="post.author?.location"> · {{ post.author.location }}</template>
+              </span>
+            </div>
+            <em class="badge" :data-type="post.type">{{ typeIcon(post.type) }} {{ post.typeLabel }}</em>
           </header>
 
           <p class="feed-content" :class="{ expanded: expanded[post.id] }">{{ post.content }}</p>
-          <button v-if="post.content.length > 80" class="expand-btn" type="button" @click="expanded[post.id] = !expanded[post.id]">
+          <button
+            v-if="post.content.length > 80"
+            class="expand-btn"
+            type="button"
+            @click="expanded[post.id] = !expanded[post.id]"
+          >
             {{ expanded[post.id] ? '收起' : '展开全文' }}
           </button>
 
-          <div v-if="post.tags.length" class="tags">
-            <span v-for="tag in post.tags" :key="tag">#{{ tag }}</span>
+          <div v-if="post.tagList?.length" class="tags">
+            <span v-for="tag in post.tagList" :key="tag">#{{ tag }}</span>
           </div>
 
-          <div v-if="post.images.length" class="feed-images" :class="imageGridClass(post.images.length)">
-            <div v-for="img in post.images.slice(0, 9)" :key="img" class="image-item">
+          <div v-if="post.imageList?.length" class="feed-images" :class="imageGridClass(post.imageList.length)">
+            <div v-for="(img, i) in post.imageList.slice(0, 9)" :key="i" class="image-item">
               <img :src="img" alt="动态图片" />
               <span>查看详情</span>
             </div>
           </div>
 
-          <div v-if="post.type === 'sell'" class="price-row">¥{{ post.price }}</div>
-          <div v-else-if="post.type === 'buy'" class="price-row">求带价</div>
+          <!-- 商品卡片：仅 productId 非空时有值 -->
+          <router-link
+            v-if="post.product"
+            :to="`/products/${post.product.id}`"
+            class="feed-product"
+          >
+            <span class="fp-title">{{ post.product.title }}</span>
+            <span class="fp-price">¥{{ post.product.price }}</span>
+            <span class="fp-status">{{ productStatusText(post.product.status) }}</span>
+          </router-link>
 
-          <footer class="feed-actions">
+          <div v-else-if="post.type === 'SEEK'" class="price-row">求带价</div>
+
+          <!--
+            互动按钮：仅商品类动态显示。
+            现有互动接口挂在 /api/products 下，且 like_record/comments 表没有
+            target_type 列，post 与 product 的 ID 会碰撞，故非商品类动态不提供互动入口。
+          -->
+          <footer v-if="post.productId" class="feed-actions">
             <button type="button" :class="{ 'like-pop': likeAnimating[post.id] }" @click="onLike(post)">
-              {{ likedMap[post.id] ? '❤️' : '🤍' }} 点赞 {{ post.likes }}
+              {{ likedMap[post.id] ? '❤️' : '🤍' }} 点赞 {{ post.likeCount ?? 0 }}
             </button>
-            <button type="button" @click="toggleComments(post)">💬 评论 {{ post.comments }}</button>
-            <button type="button" @click="onShare(post)">✉️ 转发 {{ post.shares || 0 }}</button>
+            <button type="button" @click="toggleComments(post)">
+              💬 评论 {{ post.commentCount ?? 0 }}
+            </button>
+            <button type="button" @click="onShare(post)">✉️ 转发 {{ post.shareCount ?? 0 }}</button>
           </footer>
 
           <section v-if="activeCommentId === post.id" class="comment-area">
@@ -95,6 +217,13 @@
             </div>
           </section>
         </article>
+
+        <!-- 分页 -->
+        <div v-if="!loading && !feedError && total > 0" class="feed-pager">
+          <button type="button" :disabled="page === 1" @click="changePage(page - 1)">上一页</button>
+          <span>第 {{ page }} / {{ totalPages }} 页，共 {{ total }} 条</span>
+          <button type="button" :disabled="page >= totalPages" @click="changePage(page + 1)">下一页</button>
+        </div>
       </section>
 
       <aside class="plaza-right">
@@ -119,22 +248,30 @@
       </aside>
     </main>
 
-    <div v-if="toast" class="toast">{{ toast }}</div>
+    <div v-if="toast" class="plaza-toast">{{ toast }}</div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import VerifiedBadge from '../components/VerifiedBadge.vue'
+import { getHallProfile, getPosts, getPostTypes, createPost } from '../api/plaza'
 import { toggleLike, getComments, addComment, shareProduct } from '../api/product'
 
-const filters = [
-  { value: 'all', label: '全部' },
-  { value: 'sell', label: '出售' },
-  { value: 'buy', label: '求购' },
-  { value: 'free', label: '免费送' },
-  { value: 'warning', label: '避雷' },
-  { value: 'chat', label: '闲聊' },
-]
+const router = useRouter()
+
+/* ---------- 状态 ---------- */
+const posts = ref([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = 10
+const loading = ref(true)
+const feedError = ref('')
+const profile = ref(null)
+const profileError = ref('')
+const typeOptions = ref([])
 const activeFilter = ref('all')
 const likedMap = ref({})
 const likeAnimating = ref({})
@@ -142,64 +279,91 @@ const activeCommentId = ref(null)
 const commentMap = ref({})
 const commentDrafts = ref({})
 const commentLoadingMap = ref({})
+const composerOpen = ref(false)
+const submitting = ref(false)
+const draftError = ref('')
+const draft = reactive({ type: 'SELL', content: '', productTitle: '', productPrice: '', images: [] })
 const toast = ref('')
+const expanded = ref({})
+
 let toastTimer = null
 
-const posts = ref([
-  {
-    id: 1, userId: 12, user: '宿舍王姐', avatar: '', time: '刚刚', location: '东校区',
-    type: 'sell', typeLabel: '出售', typeIcon: '🔴',
-    content: '护眼台灯和高数教材一起打包，宿舍自提。这个台灯陪伴了我两年，亮度可以调，晚上写作业很舒服；高数教材笔记比较完整，适合下学期预习复习。价格可以小刀，但打包送走优先。',
-    images: ['/sample/book.svg', '/sample/hero.svg'],
-    price: 20, status: 'selling', tags: ['教材', '宿舍神器'], likes: 6, comments: 2,
-  },
-  {
-    id: 2, userId: 18, user: '数学系的P', avatar: '', time: '10 分钟前', location: '西校区',
-    type: 'buy', typeLabel: '求购', typeIcon: '🔵',
-    content: '求购 2024 年线性代数真题，任意版本都可。最好有解析，考研复试用。',
-    images: ['/sample/book.svg'],
-    price: null, status: 'wanted', tags: ['教材', '考研'], likes: 3, comments: 4,
-  },
-  {
-    id: 3, userId: 24, user: '环保先锋', avatar: '', time: '1 小时前', location: '南区',
-    type: 'free', typeLabel: '免费送', typeIcon: '🟢',
-    content: '宿舍盆栽搬家剩几盆绿萝，带盆自提。',
-    images: ['/sample/hero.svg', '/sample/bike.svg', '/sample/phone.svg', '/sample/book.svg'],
-    price: null, status: 'selling', tags: ['闲置', '自提'], likes: 9, comments: 1,
-  },
-  {
-    id: 4, userId: 31, user: '避坑小分队', avatar: '', time: '昨天', location: '北区',
-    type: 'warning', typeLabel: '避雷', typeIcon: '🟡',
-    content: '提醒：这周有人虚标二手平板，请线下验货。特别是平板和耳机，最好见面验机，不要只看截图。',
-    images: ['/sample/phone.svg', '/sample/hero.svg', '/sample/bike.svg', '/sample/book.svg', '/sample/phone.svg'],
-    price: null, status: 'resolved', tags: ['校园避雷榜'], likes: 18, comments: 7,
-  },
-  {
-    id: 5, userId: 37, user: '路过的栗子', avatar: '', time: '前天', location: '中区',
-    type: 'chat', typeLabel: '闲聊', typeIcon: '🟢',
-    content: '毕业季谁来组个清仓群？宿舍好多还能用的东西，直接扔有点可惜。顺便问下大家平时会把闲置挂到这里吗？',
-    images: [],
-    price: null, status: 'selling', tags: ['毕业季清仓'], likes: 5, comments: 8,
-  },
-])
-
-const hotTopics = ['毕业季清仓', '宿舍搬家', '二手教材互助', '校园避雷榜']
-const activeUsers = [
-  { name: '阿明同学', note: '在售 9 件' },
-  { name: '小林', note: '本月 12 单' },
-  { name: '毕业倒计时', note: '全场低价' },
+/** 后端枚举兜底；正常由 /posts/types 提供，取不到时用这一份静态文案 */
+const FALLBACK_TYPES = [
+  { value: 'SELL', label: '出售' },
+  { value: 'SEEK', label: '求购' },
+  { value: 'FREE', label: '免费送' },
+  { value: 'WARN', label: '避雷' },
+  { value: 'CHAT', label: '闲聊' },
 ]
 
-const filteredPosts = computed(() => {
-  if (activeFilter.value === 'all') return posts.value
-  return posts.value.filter((post) => post.type === activeFilter.value)
+const TYPE_ICONS = { SELL: '🔴', SEEK: '🔵', FREE: '🟢', WARN: '🟡', CHAT: '⚪' }
+
+const filters = computed(() => [{ value: 'all', label: '全部' }, ...typeOptions.value])
+
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const needsProductInfo = computed(() => draft.type === 'SELL' || draft.type === 'FREE')
+const composerPlaceholder = computed(() => {
+  switch (draft.type) {
+    case 'SEEK': return '想求购什么？写清版本、要求与预算更容易被找到…'
+    case 'WARN': return '提醒同学们注意什么？让更多人少踩坑…'
+    case 'CHAT': return '随便聊聊，抛个话题给大伙儿…'
+    default: return '描述一下这件闲置的成色、入手渠道与可交易时间…'
+  }
 })
 
-const expanded = ref({})
+function typeIcon(type) { return TYPE_ICONS[type] || '⚪' }
+
+function productStatusText(status) {
+  if (status === 1) return '在售'
+  if (status === 2) return '已售出'
+  if (status === 0) return '已下架'
+  return ''
+}
+
 function imageGridClass(count) {
   if (count === 1) return 'grid-1'
   if (count <= 4) return 'grid-2'
   return 'grid-3'
+}
+
+function handleImageUpload(event) {
+  const files = event.target.files ? Array.from(event.target.files) : []
+  if (!files.length) return
+  if (draft.images.length + files.length > 9) {
+    alert('最多只能上传 9 张图片')
+    return
+  }
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        let width = img.width
+        let height = img.height
+        const maxSize = 800
+        if (width > height) {
+          if (width > maxSize) { height = Math.round(height * (maxSize / width)); width = maxSize }
+        } else {
+          if (height > maxSize) { width = Math.round(width * (maxSize / height)); height = maxSize }
+        }
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+        draft.images.push(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+  event.target.value = ''
+}
+
+function removeImage(index) {
+  draft.images.splice(index, 1)
 }
 
 function showToast(message) {
@@ -213,12 +377,136 @@ function formatTime(value) {
   return String(value).replace('T', ' ').slice(0, 16)
 }
 
+/* ---------- 数据加载 ---------- */
+async function loadProfile() {
+  try {
+    const res = await getHallProfile()
+    profile.value = res?.data || null
+  } catch (err) {
+    profile.value = null
+    profileError.value = err?.response?.message || '名片加载失败'
+  }
+}
+
+async function loadTypes() {
+  try {
+    const res = await getPostTypes()
+    const list = res?.data
+    if (Array.isArray(list) && list.length) {
+      typeOptions.value = list
+      return
+    }
+  } catch { /* 忽略，走兜底 */ }
+  typeOptions.value = FALLBACK_TYPES
+}
+
+async function loadFeed() {
+  try {
+    loading.value = true
+    feedError.value = ''
+    const res = await getPosts({
+      type: activeFilter.value === 'all' ? null : activeFilter.value,
+      page: page.value,
+      size: pageSize
+    })
+    const data = res?.data
+    posts.value = data?.list || []
+    total.value = data?.total || 0
+  } catch (err) {
+    console.error('获取大厅动态失败:', err)
+    feedError.value = err?.response?.message || '动态加载失败，请检查网络'
+    posts.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+function setFilter(value) {
+  activeFilter.value = value
+  page.value = 1
+  loadFeed()
+}
+
+function changePage(next) {
+  if (next < 1 || next > totalPages.value) return
+  page.value = next
+  loadFeed()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+/* ---------- 发布 ---------- */
+function openComposer() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录后再发布动态')
+    router.push({ path: '/login', query: { redirect: '/plaza' } })
+    return
+  }
+  draftError.value = ''
+  composerOpen.value = true
+}
+
+async function submitPost() {
+  draftError.value = ''
+
+  const content = draft.content.trim()
+  if (!content && draft.images.length === 0) {
+    draftError.value = '动态内容不能为空，请至少上传一张图片'
+    return
+  }
+
+  const payload = {
+    type: draft.type,
+    content,
+    tags: [],
+    images: draft.images
+  }
+
+  if (needsProductInfo.value && draft.productTitle.trim()) {
+    payload.productInfo = {
+      title: draft.productTitle.trim(),
+      price: draft.productPrice === '' ? null : Number(draft.productPrice)
+    }
+    if (draft.type === 'SELL' && (payload.productInfo.price === null || payload.productInfo.price <= 0)) {
+      draftError.value = '出售动态必须填写大于 0 的价格'
+      return
+    }
+  } else if (draft.type === 'SELL') {
+    draftError.value = '出售动态需要填写商品标题'
+    return
+  }
+
+  submitting.value = true
+  try {
+    const res = await createPost(payload)
+    if (res?.code === 200) {
+      ElMessage.success(res.message || '发布成功')
+      composerOpen.value = false
+      draft.type = 'SELL'
+      draft.content = ''
+      draft.productTitle = ''
+      draft.productPrice = ''
+      draft.images = []
+      page.value = 1
+      await Promise.all([loadFeed(), loadProfile()])
+    } else {
+      draftError.value = res?.message || '发布失败'
+    }
+  } catch (err) {
+    draftError.value = err?.response?.message || err?.cause?.message || '发布失败，请重试'
+  } finally {
+    submitting.value = false
+  }
+}
+
+/* ---------- 互动（仅商品类动态） ---------- */
 async function onLike(post) {
   likeAnimating.value[post.id] = true
   setTimeout(() => { likeAnimating.value[post.id] = false }, 300)
   try {
-    const res = await toggleLike(post.id)
-    post.likes = res.data.likeCount
+    const res = await toggleLike(post.productId)
+    post.likeCount = res.data.likeCount
     likedMap.value[post.id] = res.data.liked
   } catch {
     showToast('点赞失败')
@@ -230,9 +518,9 @@ async function toggleComments(post) {
   if (activeCommentId.value === post.id && !commentMap.value[post.id]) {
     commentLoadingMap.value[post.id] = true
     try {
-      const res = await getComments(post.id, 1, 20)
+      const res = await getComments(post.productId, 1, 20)
       commentMap.value[post.id] = res.data
-      post.comments = res.data.length
+      post.commentCount = res.data.length
     } catch {
       showToast('加载评论失败')
     } finally {
@@ -245,10 +533,10 @@ async function submitComment(post) {
   const content = (commentDrafts.value[post.id] || '').trim()
   if (!content) return
   try {
-    const res = await addComment(post.id, content)
+    const res = await addComment(post.productId, content)
     if (!commentMap.value[post.id]) commentMap.value[post.id] = []
     commentMap.value[post.id].push(res.data)
-    post.comments += 1
+    post.commentCount += 1
     commentDrafts.value[post.id] = ''
   } catch {
     showToast('评论失败')
@@ -257,218 +545,250 @@ async function submitComment(post) {
 
 async function onShare(post) {
   try {
-    const res = await shareProduct(post.id)
-    post.shares = res.data.shareCount
+    const res = await shareProduct(post.productId)
+    post.shareCount = res.data.shareCount
     showToast('已转发/分享成功')
   } catch {
     showToast('分享失败')
   }
 }
+
+onMounted(async () => {
+  await loadTypes()
+  await Promise.all([loadProfile(), loadFeed()])
+})
 </script>
 
 <style scoped>
-.plaza {
-  --surface: rgba(18, 18, 20, 0.78);
-  --surface-2: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.09);
-  --text: #f5f5f4;
-  --text-2: #a8a29e;
-  min-height: 100vh;
-  color: var(--text);
-}
+.plaza { background: var(--bg); min-height: 100vh; }
 
 .plaza-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: sticky; top: 0; z-index: 100;
   background: rgba(15, 15, 16, 0.72);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px) saturate(160%);
 }
-
 .plaza-header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between;
+  height: var(--header-h);
 }
-
 .brand { color: var(--text); text-decoration: none; font-weight: 700; }
-.plaza-nav { display: flex; gap: 18px; }
-.nav-link { color: var(--text-2); text-decoration: none; }
+
+/* 导航水平居中于整个 header（与首页间距对齐） */
+.plaza-nav {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; gap: var(--space-1);
+}
+.nav-link {
+  padding: 8px 12px; font-size: var(--text-base);
+  border-radius: var(--radius-sm); color: var(--text-2);
+  text-decoration: none; white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease);
+}
+.nav-link:hover { color: var(--text); }
 .nav-link.is-active { color: var(--text); font-weight: 600; }
 
 .plaza-shell {
-  max-width: 1440px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
-  gap: 20px;
-  padding: 24px;
-}
-
-.plaza-left,
-.plaza-right {
-  position: sticky;
-  top: 84px;
-  align-self: start;
-  display: grid;
-  gap: 16px;
-}
-
-.plaza-feed { display: grid; gap: 16px; }
-
-.plaza .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(16px) saturate(160%);
+  max-width: 1440px; margin: 0 auto;
+  display: grid; grid-template-columns: 280px minmax(0, 1fr) 320px;
+  gap: 20px; padding: 24px;
 }
 
 .plaza-user { text-align: center; }
 .plaza-user h2, .card h3 { margin: 10px 0 4px; }
+.plaza-user h2 { display: inline-flex; align-items: center; gap: 6px; }
 .plaza-user p, .feed-meta span, .announcement, .active-user small { color: var(--text-2); }
-.user-stats { display: flex; justify-content: center; gap: 16px; margin-top: 14px; }
-.user-stats span { display: grid; color: var(--text-2); font-size: 12px; }
-.user-stats b { color: var(--text); font-size: 18px; }
+.plaza-user .user-hint { font-size: var(--text-xs); margin: var(--space-2) 0 0; }
+
+.user-stats {
+  display: flex; justify-content: space-around;
+  gap: var(--space-2); margin-top: var(--space-4);
+  padding-top: var(--space-4); border-top: 1px solid var(--border);
+}
+.user-stats b { display: block; font-size: var(--text-lg); color: var(--text); }
+.user-stats span { font-size: var(--text-xs); color: var(--text-2); }
 
 .avatar {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #2dd4bf, #64748b);
-  color: #111;
-  font-weight: 700;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-3); color: var(--text-2);
+  overflow: hidden; flex-shrink: 0;
 }
-.avatar-lg { width: 72px; height: 72px; margin: 0 auto; font-size: 24px; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-lg { width: 64px; height: 64px; margin: 0 auto; font-size: var(--text-xl); }
 
 .plaza-post-btn, .feed-composer button, .feed-actions button, .plaza-filter button, .expand-btn {
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: transform .18s ease, background-color .2s ease, color .2s ease, box-shadow .2s ease;
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--text); padding: 8px 14px; border-radius: var(--radius);
+  font-size: var(--text-sm); cursor: pointer;
+  transition: all 0.3s cubic-bezier(.25,.8,.25,1);
 }
-.feed-actions button:hover,
-.plaza-filter button:hover,
-.expand-btn:hover {
-  transform: scale(1.05);
-  background-color: rgba(255, 255, 255, 0.12);
+.plaza-post-btn {
+  width: 100%; padding: var(--space-3);
+  background: var(--accent); color: #fff; border: none; font-weight: var(--weight-medium);
 }
-.plaza-post-btn:hover,
-.feed-composer button:hover {
-  transform: scale(1.05);
-  filter: brightness(0.95);
-}
-.feed-actions button:active,
-.plaza-filter button:active,
-.plaza-post-btn:active,
-.feed-composer button:active,
-.expand-btn:active {
-  transform: scale(0.95);
-}
-.plaza-post-btn, .feed-composer button {
-  width: 100%;
-  padding: 12px 16px;
-  background: #f5f5f4;
-  color: #111;
-  font-weight: 700;
-}
+.plaza-post-btn:hover { background: var(--accent-hover); }
+.plaza-filter button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
-.plaza-filter { display: grid; gap: 8px; }
-.plaza-filter button {
-  padding: 10px 12px;
-  text-align: left;
-  background: var(--surface-2);
-  color: var(--text);
-}
-.plaza-filter button.active { background: #f5f5f4; color: #111; }
-
+.plaza-feed { display: grid; gap: 16px; }
 .feed-composer { padding: 16px; }
+.feed-composer > button { width: 100%; text-align: left; color: var(--text-3); background: var(--surface-2); border-style: dashed; }
+
+.composer-types { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.composer-types button { padding: 4px 12px; font-size: var(--text-xs); }
+.composer-types button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.composer-textarea {
+  width: 100%; padding: var(--space-3); font-size: var(--text-sm); font-family: inherit;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); resize: vertical;
+}
+.composer-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.composer-images { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+.uploaded-image { position: relative; width: 96px; height: 96px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+.uploaded-image img { width: 100%; height: 100%; object-fit: cover; }
+.remove-image { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); border: none; border-radius: var(--radius-full); color: #fff; cursor: pointer; }
+.upload-button { width: 96px; height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--border-strong); border-radius: var(--radius); cursor: pointer; color: var(--text-3); transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
+.upload-button svg { width: 24px; height: 24px; }
+.upload-button span { font-size: var(--text-xs); }
+.upload-button:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.composer-product {
+  display: flex; gap: var(--space-3); margin-top: var(--space-3); flex-wrap: wrap;
+}
+.cp-field { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: var(--space-1); }
+.cp-field--price { flex: 0 0 160px; }
+.cp-field span { font-size: var(--text-xs); color: var(--text-2); }
+.cp-field em { color: var(--danger); font-style: normal; }
+.cp-field input {
+  padding: 8px 12px; font-size: var(--text-sm);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+}
+.cp-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.composer-error { margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--danger); }
+.composer-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.cp-cancel, .cp-submit { padding: 6px 16px; font-size: var(--text-sm); }
+.cp-submit { background: var(--accent); color: #fff; border-color: var(--accent); }
+.cp-submit:hover:not(:disabled) { background: var(--accent-hover); }
+.cp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .feed-card { padding: 16px; transition: transform .3s cubic-bezier(.25,.8,.25,1), box-shadow .3s ease; }
-.feed-card:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28); }
+.feed-card:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(0,0,0,.28); }
 .feed-head { display: flex; align-items: center; gap: 12px; }
 .feed-meta { display: grid; }
-.badge {
-  margin-left: auto;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  color: var(--text);
-  font-size: 12px;
-  font-style: normal;
-}
+.feed-meta b { font-size: var(--text-sm); color: var(--text); }
+.feed-meta span { font-size: var(--text-xs); }
+
+.badge { margin-left: auto; font-size: var(--text-xs); padding: 3px 10px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-2); font-style: normal; }
+
 .feed-content {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin: 14px 0 0;
-  line-height: 1.7;
+  margin: var(--space-3) 0 0; color: var(--text);
+  line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
 }
 .feed-content.expanded { display: block; }
-.expand-btn {
-  border: 0;
-  background: transparent;
-  color: #7dd3fc;
-  cursor: pointer;
-  padding: 4px 0;
-}
-.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.tags span {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  color: var(--text);
-  font-size: 12px;
-}
+.expand-btn { margin-top: var(--space-2); font-size: var(--text-xs); padding: 2px 0; border: none; background: none; color: var(--accent); }
+
+.tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.tags span { font-size: var(--text-xs); color: var(--accent); }
+
 .feed-images { display: grid; gap: 8px; margin: 12px 0; }
-.image-item { position: relative; overflow: hidden; border-radius: 12px; }
-.image-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; transition: transform .4s ease; }
-.image-item span { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.38); color: #fff; opacity: 0; transition: opacity .25s ease; }
-.image-item:hover img { transform: scale(1.08); }
+.image-item { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface-3); }
+.image-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.image-item span {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.45); color: #fff; font-size: var(--text-sm);
+  opacity: 0; transition: opacity var(--dur) var(--ease);
+}
 .image-item:hover span { opacity: 1; }
 .feed-images.grid-1 .image-item { height: 320px; }
 .feed-images.grid-2 { grid-template-columns: repeat(2, 1fr); }
 .feed-images.grid-2 .image-item { aspect-ratio: 1 / 1; }
 .feed-images.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .feed-images.grid-3 .image-item { aspect-ratio: 1 / 1; }
-.price-row { color: #fca5a5; font-weight: 700; margin: 12px 0; }
-.feed-actions {
-  display: flex;
-  gap: 16px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  color: var(--text-2);
+
+.feed-product {
+  display: flex; align-items: center; gap: var(--space-3);
+  margin-top: var(--space-3); padding: var(--space-3);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); text-decoration: none;
 }
-.feed-actions button { background: transparent; color: var(--text-2); padding: 0; }
-.comment-area { margin-top: 12px; display: grid; gap: 10px; }
-.comment-loading { color: var(--text-2); font-size: var(--text-sm); }
-.comment-item { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); }
-.comment-item b { font-size: 13px; }
-.comment-item small { color: var(--text-2); font-size: 12px; }
-.comment-input { display: flex; gap: 8px; }
-.comment-input input { flex: 1; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.08); color: var(--text); outline: none; }
-.comment-input button { border: 0; border-radius: 999px; padding: 8px 14px; background: #f5f5f4; color: #111; cursor: pointer; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,.75); color: #fff; z-index: 10000; }
-.like-pop { animation: pop .3s ease; }
-@keyframes pop { 50% { transform: scale(1.25); } }
-.card h3 { margin-top: 0; }
-.card a { display: block; color: var(--text); text-decoration: none; margin: 10px 0; }
-.active-user { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; margin-top: 12px; }
-.active-user small { grid-column: 2; }
+.feed-product:hover { border-color: var(--accent); }
+.fp-title { flex: 1; font-size: var(--text-sm); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-price { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--accent); }
+.fp-status { font-size: var(--text-xs); color: var(--text-3); }
+
+.price-row { margin-top: var(--space-3); font-size: var(--text-sm); color: var(--text-2); }
+
+.feed-actions { display: flex; gap: var(--space-4); margin-top: var(--space-4); }
+.feed-actions button { background: transparent; color: var(--text-2); padding: 0; border: none; font-size: var(--text-sm); }
+.feed-actions button:hover { color: var(--text); }
+
+.comment-area { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.comment-loading { font-size: var(--text-xs); color: var(--text-3); }
+.comment-item { display: flex; gap: var(--space-2); padding: 6px 0; font-size: var(--text-sm); }
+.comment-item small { color: var(--text-3); font-size: var(--text-xs); }
+.comment-input { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.comment-input input {
+  flex: 1; padding: 6px 12px; font-size: var(--text-sm);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text);
+}
+.comment-input button { font-size: var(--text-xs); padding: 6px 14px; }
+
+.feed-state {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-12) var(--space-4); text-align: center;
+}
+.feed-state p { margin: 0; font-size: var(--text-sm); color: var(--text-2); }
+.feed-state button { font-size: var(--text-sm); padding: 6px 16px; }
+
+.feed-pager {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-4);
+  padding: var(--space-3); font-size: var(--text-sm); color: var(--text-2);
+}
+.feed-pager button {
+  padding: 4px 14px; font-size: var(--text-xs);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); cursor: pointer;
+}
+.feed-pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.feed-skeleton { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.sk { background: var(--surface-3); border-radius: var(--radius-sm); animation: sk-pulse 1.4s ease-in-out infinite; }
+.sk-row { height: 36px; }
+.sk-line { height: 14px; }
+.sk-line--short { width: 40%; }
+@keyframes sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.plaza-toast {
+  position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+  z-index: 1000; padding: 10px 20px; border-radius: var(--radius);
+  background: rgba(20,20,18,.9); color: #fff; font-size: var(--text-sm);
+}
 
 @media (max-width: 1100px) {
   .plaza-shell { grid-template-columns: 240px minmax(0, 1fr); }
   .plaza-right { display: none; }
 }
-
 @media (max-width: 760px) {
   .plaza-shell { grid-template-columns: 1fr; padding: 16px; }
   .plaza-left, .plaza-right { position: static; }
+}
+@media (max-width: 768px) {
+  .plaza-nav {
+    position: static; transform: none;
+    flex: 1; justify-content: flex-end;
+    overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
+  }
+  .plaza-nav::-webkit-scrollbar { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+  .feed-card:hover { transform: none; }
 }
 </style>
