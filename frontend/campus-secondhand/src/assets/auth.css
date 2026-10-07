@@ -1,0 +1,584 @@
+/* =========================================================
+   认证页共享样式（全局）
+   —— Login / Register / ResetPassword 三页共用同一套暗色环境，
+      切换页面时背景连续，视觉上像「同一个空间里换了张卡片」。
+   仅在 .auth-shell 容器内生效，不影响其他业务页面。
+   ========================================================= */
+
+/* ---------- 1. Token 翻转：让 theme.css 的组件自动适配暗底 ---------- */
+.auth-shell {
+  --bg: #0b1f1a;
+  --bg-subtle: rgba(255, 255, 255, 0.04);
+  --surface: rgba(255, 255, 255, 0.08);
+  --surface-2: rgba(255, 255, 255, 0.05);
+  --surface-3: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-strong: rgba(255, 255, 255, 0.24);
+
+  /* 暗底上原本的近黑文字不可见，翻成浅色 */
+  --text: #e8ecea;
+  --text-2: #a7b3ae;
+  --text-3: #6f7d78;
+
+  /* 主色提亮，暗底上更跳 */
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-active: #059669;
+  --accent-soft: rgba(16, 185, 129, 0.14);
+  --accent-soft-strong: rgba(16, 185, 129, 0.22);
+
+  /* 语义色及其 soft 变体必须成对调整，否则 Register 的密码强度条会糊 */
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.16);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.16);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.16);
+  --info: #38bdf8;
+  --info-soft: rgba(56, 189, 248, 0.16);
+}
+
+/* ---------- 2. 布局外壳 ---------- */
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* 视频降到 16% 当纹理，保留原组件不改其实现 */
+.auth-shell .video-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.16;
+  pointer-events: none;
+}
+.auth-shell .video-dim > * {
+  position: absolute !important;
+  inset: 0;
+}
+
+.auth-shell__stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.auth-shell__stage--split {
+  max-width: 1080px;
+}
+
+.auth-shell__stage--compact {
+  max-width: 440px;
+}
+
+/* ---------- 3. Aurora 光斑：3 团，blur 80px，12s 漂移 ---------- */
+.auth-shell__aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  /* JS 写入 --parallax-x/y，随鼠标反向位移 ±10px */
+  transform: translate3d(var(--parallax-x, 0px), var(--parallax-y, 0px), 0);
+  transition: transform 800ms var(--ease);
+  will-change: transform;
+}
+
+.aurora-blob {
+  position: absolute;
+  width: 46vmax;
+  height: 46vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.aurora-blob--green {
+  top: -12%;
+  left: -8%;
+  background: radial-gradient(circle, #10b981, transparent 68%);
+  animation: aurora-drift-a 12s ease-in-out infinite;
+}
+
+.aurora-blob--blue {
+  bottom: -18%;
+  right: -6%;
+  background: radial-gradient(circle, #38bdf8, transparent 68%);
+  animation: aurora-drift-b 12s ease-in-out infinite;
+}
+
+.aurora-blob--gold {
+  top: 28%;
+  left: 52%;
+  width: 34vmax;
+  height: 34vmax;
+  background: radial-gradient(circle, #fbbf24, transparent 66%);
+  opacity: 0.32;
+  animation: aurora-drift-c 12s ease-in-out infinite;
+}
+
+@keyframes aurora-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8vmax, 5vmax, 0) scale(1.14); }
+}
+@keyframes aurora-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); }
+  50% { transform: translate3d(-7vmax, -6vmax, 0) scale(0.94); }
+}
+@keyframes aurora-drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-5vmax, 4vmax, 0) scale(1.2); }
+}
+
+/* ---------- 4. 漂浮光点粒子（36 个，位置/delay 由 JS 写死） ---------- */
+.auth-shell__particles {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translate3d(var(--parallax-x, 0px), var(--parallax-y, 0px), 0);
+  transition: transform 800ms var(--ease);
+  will-change: transform;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1));
+  animation: particle-twinkle var(--dur, 7s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes particle-twinkle {
+  0%, 100% { opacity: 0.18; transform: scale(0.85); }
+  50% { opacity: 0.85; transform: scale(1.15); }
+}
+
+/* ---------- 5. 毛玻璃卡片 + 流光描边 + 3D Tilt ---------- */
+.glass-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-8);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  transform-style: preserve-3d;
+  animation: card-in 620ms var(--ease) both;
+}
+
+/* 流光描边：conic-gradient 旋转一圈 6s，用 mask 抠成 1px 环 */
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(16, 185, 129, 0.9) 60deg,
+    rgba(56, 189, 248, 0.9) 130deg,
+    transparent 220deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-spin 6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes border-spin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Tilt：JS 写 --tilt-x / --tilt-y，未启用时保持 0 */
+.glass-card {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 260ms var(--ease);
+}
+
+/* ---------- 6. 表单子元素 stagger 入场（间隔 80ms） ---------- */
+.stagger > * {
+  animation: field-in 520ms var(--ease) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 80ms; }
+.stagger > *:nth-child(2) { animation-delay: 160ms; }
+.stagger > *:nth-child(3) { animation-delay: 240ms; }
+.stagger > *:nth-child(4) { animation-delay: 320ms; }
+.stagger > *:nth-child(5) { animation-delay: 400ms; }
+.stagger > *:nth-child(6) { animation-delay: 480ms; }
+.stagger > *:nth-child(7) { animation-delay: 560ms; }
+
+@keyframes field-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---------- 7. 卡片头部 ---------- */
+.auth-head {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.auth-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.auth-sub {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+/* ---------- 8. 品牌区（仅 split 变体） ---------- */
+.auth-brand {
+  position: relative;
+  flex: 0 0 60%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: var(--space-12);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(11, 110, 84, 0.5), rgba(7, 71, 54, 0.62));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.auth-brand__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: #fff;
+}
+
+.auth-brand__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.auth-brand__name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.auth-brand__copy { margin-top: var(--space-2); }
+
+/* 流动渐变字 */
+.auth-brand__slogan {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  background: linear-gradient(
+    100deg,
+    #ffffff 0%,
+    #6ee7b7 28%,
+    #7dd3fc 52%,
+    #fde68a 74%,
+    #ffffff 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradient-flow 7s ease-in-out infinite;
+}
+
+@keyframes gradient-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.auth-brand__sub {
+  margin-top: var(--space-3);
+  font-size: var(--text-md);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* 信任徽章：半透明胶囊 */
+.auth-brand__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-badge {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 成交滚动条 */
+.auth-deal-ticker {
+  min-height: 24px;
+  margin-top: var(--space-2);
+}
+
+.auth-deal-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-ticker-enter-active,
+.auth-ticker-leave-active {
+  transition: opacity var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+}
+.auth-ticker-enter-from { opacity: 0; transform: translateY(6px); }
+.auth-ticker-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* 品牌区漂浮 emoji：发光 + 上下浮动 */
+.auth-floater {
+  position: absolute;
+  z-index: 0;
+  line-height: 1;
+  opacity: 0.6;
+  pointer-events: none;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.55);
+  animation: auth-float 6s ease-in-out infinite;
+}
+
+@keyframes auth-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-22px) rotate(6deg); }
+}
+
+/* ---------- 9. 表单控件暗色适配 ---------- */
+.auth-shell .field-label {
+  color: var(--text-2);
+}
+
+.auth-shell .input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text);
+  padding-left: 40px;
+}
+
+.auth-shell .input::placeholder {
+  color: var(--text-3);
+}
+
+.auth-shell .input:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 聚焦：绿色光晕 */
+.auth-shell .input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22), 0 0 18px rgba(16, 185, 129, 0.18);
+  outline: none;
+}
+
+/* 聚焦时左侧图标点亮 */
+.auth-shell .field-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  color: var(--text-3);
+  pointer-events: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+.auth-shell .field-icon svg { width: 100%; height: 100%; display: block; }
+.auth-shell .field:focus-within .field-icon { color: var(--accent); }
+
+.auth-shell .input-affix { position: relative; }
+.auth-shell .input-affix .input { padding-right: 44px; }
+
+.auth-shell .affix-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.auth-shell .affix-btn:hover { color: var(--text); }
+.auth-shell .affix-btn svg { width: 18px; height: 18px; }
+
+.auth-shell .form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-2) 0 var(--space-6);
+}
+
+.auth-shell .checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  cursor: pointer;
+}
+.auth-shell .checkbox input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
+.auth-shell .text-link {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  text-decoration: none;
+}
+.auth-shell .text-link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+.auth-shell .auth-foot {
+  margin-top: var(--space-6);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-2);
+}
+
+.auth-shell .auth-sep {
+  margin: 0 var(--space-2);
+  color: var(--text-3);
+}
+
+/* ---------- 10. 登录按钮：渐变 + hover 扫光 ---------- */
+.auth-shell .btn-primary {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #04211a;
+  font-weight: var(--weight-semibold);
+  border: none;
+}
+
+/* 斜向光带掠过 */
+.auth-shell .btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+}
+.auth-shell .btn-primary:hover::after {
+  animation: button-sheen 720ms var(--ease);
+}
+.auth-shell .btn-primary:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+/* 点击波纹式回弹 */
+.auth-shell .btn-primary:active {
+  transform: scale(0.975);
+}
+
+@keyframes button-sheen {
+  from { left: -120%; }
+  to { left: 160%; }
+}
+
+.auth-shell .btn-outline {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+}
+.auth-shell .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.auth-shell .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- 11. Element Plus 内部组件适配 ---------- */
+.auth-shell .el-form-item { margin-bottom: 0; }
+.auth-shell .el-message-box,
+.auth-shell .el-form-item__error { color: var(--danger); }
+
+/* ---------- 12. 响应式 ---------- */
+@media (max-width: 768px) {
+  .auth-shell { padding: var(--space-4); }
+  .auth-shell__stage--split { max-width: 440px; }
+  .auth-brand { display: none; }
+  /* 关掉粒子与流光描边（低性能设备与手机演示更稳） */
+  .auth-shell__particles { display: none; }
+}
+
+@media (max-width: 480px) {
+  .glass-card { padding: var(--space-8) var(--space-6); }
+}
+
+/* ---------- 13. 无障碍：尊重「减少动态效果」 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob,
+  .particle,
+  .auth-floater,
+  .glass-card::before,
+  .auth-brand__slogan,
+  .stagger > * {
+    animation: none !important;
+  }
+  .glass-card,
+  .auth-ticker-enter-active,
+  .auth-ticker-leave-active {
+    transition: none !important;
+  }
+  .auth-shell .btn-primary::after { display: none; }
+}

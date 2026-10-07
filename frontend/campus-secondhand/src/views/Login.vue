@@ -1,23 +1,49 @@
 <template>
-  <div class="auth-page">
-    <VideoBackground />
-    <div class="auth-card">
+  <AuthShell variant="split" show-brand>
+    <!-- 品牌区 -->
+    <template #brand>
+      <div class="auth-brand__inner">
+        <header class="auth-brand__top">
+          <BrandLogo :size="44" />
+          <span class="auth-brand__name">校园二手交易</span>
+        </header>
+
+        <div class="auth-brand__copy">
+          <h1 class="auth-brand__slogan">让闲置流转 · 让温暖传递</h1>
+          <p class="auth-brand__sub">你的闲置，是别人的刚需</p>
+        </div>
+
+        <ul class="auth-brand__badges">
+          <li class="auth-badge">🎓 学生实名认证</li>
+          <li class="auth-badge">🛡 平台担保交易</li>
+          <li class="auth-badge">🤝 校内面交</li>
+        </ul>
+
+        <div class="auth-deal-ticker" role="status" aria-live="polite">
+          <transition name="auth-ticker">
+            <p :key="dealIndex" class="auth-deal-text">{{ deals[dealIndex] }}</p>
+          </transition>
+        </div>
+      </div>
+    </template>
+
+    <!-- 表单区 -->
+    <div class="glass-card">
       <header class="auth-head">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-            <path d="M21 3v5h-5" />
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-            <path d="M3 21v-5h5" />
-          </svg>
-        </span>
+        <BrandLogo :size="44" class="auth-head__logo" />
         <h1 class="auth-title">登录</h1>
         <p class="auth-sub">欢迎回到校园二手交易平台</p>
       </header>
 
-      <el-form :model="form" :rules="rules" ref="loginForm" class="auth-form">
+      <el-form :model="form" :rules="rules" ref="loginForm" class="auth-form stagger">
         <div class="field">
           <label class="field-label" for="login-username">用户名 / 学号</label>
+          <div class="field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+            </svg>
+          </div>
           <input
             id="login-username"
             v-model="form.username"
@@ -30,6 +56,12 @@
 
         <div class="field">
           <label class="field-label" for="login-password">密码</label>
+          <div class="field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
           <div class="input-affix">
             <input
               id="login-password"
@@ -80,16 +112,17 @@
         <router-link to="/register" class="text-link">立即注册</router-link>
       </p>
     </div>
-  </div>
+  </AuthShell>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import auth from '../api/auth'
-import VideoBackground from '../components/VideoBackground.vue'
+import AuthShell from '../components/AuthShell.vue'
+import BrandLogo from '../components/BrandLogo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -108,6 +141,33 @@ const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
+
+// 成交滚动条 mock 文案（每 5 秒轮播）
+const deals = [
+  '刚刚 · 学长的《高数教材》找到了新主人',
+  '1 分钟前 · 一辆闲置自行车被学妹骑走了',
+  '3 分钟前 · 毕业师兄的耳机已安全交付',
+]
+const dealIndex = ref(0)
+let dealTimer = null
+
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+onMounted(() => {
+  if (prefersReducedMotion()) return
+  dealTimer = setInterval(() => {
+    dealIndex.value = (dealIndex.value + 1) % deals.length
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (dealTimer) {
+    clearInterval(dealTimer)
+    dealTimer = null
+  }
+})
 
 function onSubmit() {
   loginForm.value.validate((valid) => {
@@ -154,113 +214,8 @@ function onSubmit() {
 </script>
 
 <style scoped>
-.auth-page {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-6);
-  background: transparent;
-}
-
-.auth-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 400px;
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--radius-xl);
-  padding: var(--space-10) var(--space-8);
-  box-shadow: var(--shadow-md);
-}
-
-.auth-head {
-  text-align: center;
-  margin-bottom: var(--space-8);
-}
-
-.brand-mark {
-  width: 44px;
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: #fff;
+/* 头部 Logo 与标题的间距（组件其余样式内聚在 BrandLogo.vue） */
+.auth-head__logo {
   margin-bottom: var(--space-4);
-}
-.brand-mark svg { width: 24px; height: 24px; }
-
-.auth-title {
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.auth-sub {
-  margin-top: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--text-2);
-}
-
-.auth-form { margin-bottom: var(--space-6); }
-
-.input-affix { position: relative; }
-.input-affix .input { padding-right: 44px; }
-.affix-btn {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-3);
-  border-radius: var(--radius-sm);
-}
-.affix-btn:hover { color: var(--text); }
-.affix-btn svg { width: 18px; height: 18px; }
-
-.form-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: var(--space-2) 0 var(--space-6);
-}
-
-.checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  cursor: pointer;
-}
-.checkbox input { width: 15px; height: 15px; accent-color: var(--accent); }
-
-.text-link { font-size: var(--text-sm); color: var(--accent); }
-.text-link:hover { color: var(--accent-hover); }
-
-.auth-foot {
-  text-align: center;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-}
-
-/* Element Plus 表单项去默认 margin，交由 .field 控制 */
-:deep(.el-form-item) { margin-bottom: 0; }
-
-@media (max-width: 480px) {
-  .auth-card { padding: var(--space-8) var(--space-6); }
 }
 </style>
