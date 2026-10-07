@@ -14,6 +14,8 @@ import com.example.campussecondhand.entity.Message;
 import com.example.campussecondhand.entity.Category;
 import com.example.campussecondhand.exception.BadRequestException;
 import com.example.campussecondhand.service.PenaltyService;
+import com.example.campussecondhand.entity.Report;
+import com.example.campussecondhand.service.ReportService;
 import com.example.campussecondhand.repository.UserRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.OrderRepository;
@@ -25,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
@@ -47,6 +50,9 @@ public class AdminController {
 
     @Autowired
     private PenaltyService penaltyService;
+
+    @Autowired
+    private ReportService reportService;
 
     @Autowired
     private ProductRepository productRepository;
@@ -482,5 +488,55 @@ Category category = categoryRepository.selectById(id);
             @RequestHeader("Authorization") String authHeader) {
 return ResponseEntity.ok(ApiResponse.success("获取成功", adminStatsService.categoryHeat()));
     }
-}
 
+
+    // ==================== 举报处理 ====================
+
+    /**
+     * 举报列表（物理分页）。支持按处理状态、对象类型筛选，以及按举报原因做关键词搜索。
+     */
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<?>> getReports(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        try {
+            PageParam paging = PageParam.of(page, size);
+            PageResult<Map<String, Object>> result =
+                    reportService.pageReports(paging, status, targetType, search);
+            return ResponseEntity.ok(ApiResponse.success("获取成功", result));
+        } catch (BadRequestException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+        }
+    }
+
+    /**
+     * 处理举报：执行处罚并更新举报状态，全程单事务。
+     *
+     * <p>动作与被举报对象类型的匹配校验在服务端强制执行：
+     * 商品只能 DELETE_PRODUCT，用户只能 BAN_USER，REJECT 两者皆可。
+     * 前端虽按类型过滤了下拉选项，但那是 UX 层，直接调接口可以绕过。</p>
+     */
+    @PutMapping("/reports/{id}/handle")
+    public ResponseEntity<ApiResponse<?>> handleReport(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            String action = body.get("action") == null ? null : String.valueOf(body.get("action"));
+            String remark = body.get("remark") == null ? null : String.valueOf(body.get("remark"));
+            Report report = reportService.handle(id, action, remark, operatorOf(authHeader));
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("id", report.getId());
+            result.put("status", report.getStatus());
+            result.put("adminRemark", report.getAdminRemark());
+            return ResponseEntity.ok(ApiResponse.success("处理完成", result));
+        } catch (BadRequestException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+        }
+    }
+}
