@@ -12,6 +12,8 @@ import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Message;
 import com.example.campussecondhand.entity.Category;
+import com.example.campussecondhand.exception.BadRequestException;
+import com.example.campussecondhand.service.PenaltyService;
 import com.example.campussecondhand.repository.UserRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.OrderRepository;
@@ -42,6 +44,9 @@ public class AdminController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PenaltyService penaltyService;
 
     @Autowired
     private ProductRepository productRepository;
@@ -100,20 +105,28 @@ User user = userRepository.selectById(id);
         return ResponseEntity.ok(ApiResponse.success("获取成功", user));
     }
 
-    // 禁用/启用用户
+// 禁用/启用用户（处罚逻辑已收敛到 PenaltyService，此处仅做转发）
     @PutMapping("/users/{id}/status")
     public ResponseEntity<ApiResponse<?>> updateUserStatus(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Integer status) {
-User user = userRepository.selectById(id);
-        if (user == null) {
-            return ResponseEntity.ok(ApiResponse.error(404, "用户不存在"));
+        try {
+            User user = penaltyService.updateUserStatus(id, status, operatorOf(authHeader));
+            return ResponseEntity.ok(ApiResponse.success("更新成功", user));
+        } catch (BadRequestException e) {
+            // 保持与重构前一致的 HTTP 200 + code=404/400 语义
+            return ResponseEntity.ok(ApiResponse.error(404, e.getMessage()));
         }
-        user.setStatus(status);
-        userRepository.updateById(user);
+    }
 
-        return ResponseEntity.ok(ApiResponse.success("更新成功", user));
+    /** 从请求头解析操作者昵称，仅用于日志；解析失败不影响业务 */
+    private String operatorOf(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return "unknown";
+        }
+        String username = jwtUtil.getUsernameFromToken(authHeader.substring(7));
+        return username == null ? "unknown" : username;
     }
 
     // ==================== 商品管理 ====================
@@ -162,27 +175,19 @@ Product product = productRepository.selectById(id);
         return ResponseEntity.ok(ApiResponse.success("获取成功", product));
     }
 
-    // 更新商品状态
+// 更新商品状态（处罚逻辑已收敛到 PenaltyService，此处仅做转发）
     @PutMapping("/products/{id}/status")
     public ResponseEntity<ApiResponse<?>> updateProductStatus(
             @RequestHeader("Authorization") String authHeader,
             @PathVariable Long id,
             @RequestBody Integer status) {
-Product product = productRepository.selectById(id);
-        if (product == null) {
-            return ResponseEntity.ok(ApiResponse.error(404, "商品不存在"));
+        try {
+            Product product = penaltyService.updateProductStatus(id, status, operatorOf(authHeader));
+            return ResponseEntity.ok(ApiResponse.success("更新成功", product));
+        } catch (BadRequestException e) {
+            // 保持与重构前一致的 HTTP 200 + code=400 语义
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
         }
-
-        // 白名单校验：只接受 ProductStatus 中存在的取值
-        ProductStatus target = ProductStatus.fromCode(status);
-        if (target == null) {
-            return ResponseEntity.ok(ApiResponse.error(400, "非法的商品状态值"));
-        }
-
-        product.setStatus(target.getCode());
-        productRepository.updateById(product);
-
-        return ResponseEntity.ok(ApiResponse.success("更新成功", product));
     }
 
     // 批量更新商品状态
