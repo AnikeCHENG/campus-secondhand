@@ -14,6 +14,10 @@ public interface UserRepository extends BaseMapper<User> {
     @Select("SELECT * FROM users WHERE username = #{username}")
     Optional<User> findByUsername(@Param("username") String username);
 
+    /** 按学号查用户，用于认证时判断该学号是否已被占用 */
+    @Select("SELECT * FROM users WHERE student_no = #{studentNo} LIMIT 1")
+    User selectByStudentNo(@Param("studentNo") String studentNo);
+
     /**
      * 取出疑似明文口令的用户，供一次性迁移脚本改写为 BCrypt。
      *

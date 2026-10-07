@@ -161,7 +161,16 @@
                 <dd class="mono">{{ money(order.shippingFee) }}</dd>
               </div>
               <div class="amount-row">
-                <dt>服务费<span class="amount-sub">（0.3%，由卖家承担）</span></dt>
+                <!--
+                  手续费由卖家承担：卖家已通过学生认证则本单服务费为 0。
+                  买家实付不受影响（实付 = 商品金额 + 运费），所以这里标注的是
+                  「卖家免收」而非「你已省钱」，避免误导。
+                -->
+                <dt>
+                  服务费
+                  <span v-if="sellerFeeFree" class="amount-sub amount-sub--free">🎓 卖家学生认证免手续费</span>
+                  <span v-else class="amount-sub">（0.3%，由卖家承担）</span>
+                </dt>
                 <dd class="mono amount-fee">{{ money(order.serviceFee) }}</dd>
               </div>
               <hr class="divider-line" />
@@ -295,6 +304,8 @@ const tradeNo = ref('')
 const paymentChannel = ref('')
 const remain = ref(0)
 const method = ref('alipay')
+/** 卖家已通过学生认证 ⇒ 本单服务费为 0，收银台改显免手续费文案 */
+const sellerFeeFree = computed(() => order.value?.seller?.studentVerified === true)
 const imgBroken = ref(false)
 const avatarBroken = ref(false)
 
@@ -615,6 +626,8 @@ onBeforeUnmount(() => clearInterval(timer))
   color: var(--text-2);
 }
 .amount-row dd { margin: 0; color: var(--text); }
+/* 学生认证免手续费：用 accent 浅底与徽章呼应 */
+.amount-sub--free { color: var(--accent); font-weight: var(--weight-medium); }
 .amount-sub { color: var(--text-3); font-size: var(--text-sm); }
 .amount-fee { color: var(--text-2); }
 .amount-row--total {

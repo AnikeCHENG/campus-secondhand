@@ -7,6 +7,9 @@ import com.example.campussecondhand.common.PageResult;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import com.example.campussecondhand.common.ApiResponse;
+import com.example.campussecondhand.entity.Review;
+import com.example.campussecondhand.exception.BadRequestException;
+import com.example.campussecondhand.service.ReviewService;
 import com.example.campussecondhand.entity.Order;
 import com.example.campussecondhand.entity.Product;
 import com.example.campussecondhand.entity.User;
@@ -20,6 +23,8 @@ import com.example.campussecondhand.service.OrderService;
 import com.example.campussecondhand.service.PaymentService.PayResult;
 import com.example.campussecondhand.service.ProductService;
 import com.example.campussecondhand.util.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +40,8 @@ import java.util.Optional;
 @RequestMapping("/api/orders")
 @CrossOrigin(origins = "*")
 public class OrderController {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
     @Autowired
     private OrderRepository orderRepository;
@@ -53,6 +60,9 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private ReviewService reviewService;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -232,6 +242,65 @@ public class OrderController {
         data.put("tradeNo", result.getTradeNo());
         data.put("paymentChannel", orderService.getPaymentChannel());
         return ResponseEntity.ok(ApiResponse.success(result.getMessage(), data));
+    }
+
+/**
+     * 提交评价：仅订单买家本人、仅已完成订单、一单一评。
+     *
+     * <p>权限与状态校验在 {@link ReviewService} 内完成，这里只负责取当前登录用户
+     * 并把 {@link BadRequestException} 翻译成 400。</p>
+     */
+    @PostMapping("/{id}/review")
+    public ResponseEntity<ApiResponse<?>> submitReview(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Optional<User> userOpt = getUserFromToken(authHeader);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error(401, "未登录或登录已过期"));
+        }
+        try {
+            Integer rating = body == null || body.get("rating") == null
+                    ? null
+                    : Integer.valueOf(String.valueOf(body.get("rating")).trim());
+            String content = body == null || body.get("content") == null
+                    ? null
+                    : String.valueOf(body.get("content"));
+
+            Review review = reviewService.submit(id, userOpt.get().getId(), rating, content);
+            return ResponseEntity.ok(ApiResponse.success("评价成功", toReviewView(review)));
+        } catch (BadRequestException e) {
+            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
+        } catch (Exception e) {
+            log.error("提交评价失败: ", e);
+            return ResponseEntity.ok(ApiResponse.error(500, "评价失败，请稍后重试"));
+        }
+    }
+
+    /** 订单评价回显，供详情页显示已评价内容；未评价返回 data=null 而非 404 */
+    @GetMapping("/{id}/review")
+    public ResponseEntity<ApiResponse<?>> getReview(@PathVariable Long id) {
+        try {
+            Review review = reviewService.findByOrderId(id);
+            return ResponseEntity.ok(ApiResponse.success("获取成功",
+                    review == null ? null : toReviewView(review)));
+        } catch (Exception e) {
+            log.error("获取评价失败: ", e);
+            return ResponseEntity.ok(ApiResponse.error(500, "获取失败"));
+        }
+    }
+
+    private Map<String, Object> toReviewView(Review review) {
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("id", review.getId());
+        view.put("orderId", review.getOrderId());
+        view.put("productId", review.getProductId());
+        view.put("reviewerId", review.getReviewerId());
+        view.put("targetId", review.getTargetId());
+        view.put("rating", review.getRating());
+        view.put("content", review.getContent());
+        view.put("createTime", review.getCreateTime());
+        return view;
     }
 
     /** 取消订单：商品恢复为在售 */

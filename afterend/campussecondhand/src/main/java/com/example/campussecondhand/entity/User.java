@@ -44,6 +44,14 @@ public class User {
     @TableField("is_student_verified")
     private Integer isStudentVerified = 0;
 
+    /** 学号；唯一索引保证一个学号只能对应一个账号，防止冒用他人身份骗取免手续费 */
+    @TableField("student_no")
+    private String studentNo;
+
+    /** 真实姓名，仅认证时填写，不在公开接口中返回 */
+    @TableField("real_name")
+    private String realName;
+
     @TableField("role")
     private Integer role = 0; // 0: 普通用户, 1: 管理员
 
@@ -93,6 +101,17 @@ public class User {
 
     public Integer getIsStudentVerified() { return isStudentVerified; }
     public void setIsStudentVerified(Integer isStudentVerified) { this.isStudentVerified = isStudentVerified; }
+
+    public String getStudentNo() { return studentNo; }
+    public void setStudentNo(String studentNo) { this.studentNo = studentNo; }
+
+    public String getRealName() { return realName; }
+    public void setRealName(String realName) { this.realName = realName; }
+
+    /** 是否已认证：null 视为未认证，避免历史脏数据被当成已认证 */
+    public boolean isStudentVerifiedUser() {
+        return isStudentVerified != null && isStudentVerified == 1;
+    }
 
     public Integer getRole() { return role; }
     public void setRole(Integer role) { this.role = role; }

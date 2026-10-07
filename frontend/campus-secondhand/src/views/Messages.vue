@@ -64,7 +64,10 @@
               </div>
               <div class="conv-info">
                 <div class="conv-head">
-                  <span class="conv-name">{{ conv.username }}</span>
+                  <span class="conv-name">
+                    {{ conv.username }}
+                    <VerifiedBadge :verified="conv.studentVerified" size="sm" />
+                  </span>
                   <span class="conv-time">{{ formatTime(conv.lastMessageTime) }}</span>
                 </div>
                 <p class="conv-preview">{{ conv.lastMessage }}</p>
@@ -86,7 +89,10 @@
               <div class="chat-user">
                 <div class="chat-avatar"><img :src="currentConversation?.avatar || defaultAvatar" :alt="currentConversation?.username" /></div>
                 <div class="chat-user-info">
-                  <span class="chat-username">{{ currentConversation?.username }}</span>
+                  <span class="chat-username">
+                    {{ currentConversation?.username }}
+                    <VerifiedBadge :verified="currentConversation?.studentVerified" size="sm" />
+                  </span>
                   <span class="chat-status">{{ isNewChat ? '新会话' : '在线' }}</span>
                 </div>
               </div>
@@ -164,6 +170,7 @@ import { getUserById } from '../api/user'
 import { getProductDetail } from '../api/product'
 import { ElMessage } from 'element-plus'
 import { useNotificationStore } from '../stores/notification'
+import VerifiedBadge from '../components/VerifiedBadge.vue'
 
 const router = useRouter()
 const route = useRoute()

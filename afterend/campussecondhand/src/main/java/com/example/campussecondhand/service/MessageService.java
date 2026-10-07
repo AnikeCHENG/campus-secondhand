@@ -1,6 +1,7 @@
 package com.example.campussecondhand.service;
 
 import com.example.campussecondhand.entity.Message;
+import com.example.campussecondhand.entity.User;
 import com.example.campussecondhand.repository.MessageRepository;
 import com.example.campussecondhand.repository.ProductRepository;
 import com.example.campussecondhand.repository.UserRepository;
@@ -60,12 +61,20 @@ public class MessageService {
         List<Message> sent = messageRepository.findBySenderId(userId);
         java.util.Map<Long, java.util.Map<String, Object>> convMap = new java.util.HashMap<>();
         received.forEach(m -> {
-            m.setSender(userRepository.selectById(m.getSenderId()));
-            putConversation(convMap, userId, m.getSenderId(), m.getSender() != null ? m.getSender().getUsername() : "用户" + m.getSenderId(), m.getSender() != null ? m.getSender().getAvatar() : null, m, true);
+            User other = userRepository.selectById(m.getSenderId());
+            m.setSender(other);
+            putConversation(convMap, userId, m.getSenderId(),
+                    other != null ? other.getUsername() : "用户" + m.getSenderId(),
+                    other != null ? other.getAvatar() : null,
+                    other != null && other.isStudentVerifiedUser(), m, true);
         });
         sent.forEach(m -> {
-            m.setReceiver(userRepository.selectById(m.getReceiverId()));
-            putConversation(convMap, userId, m.getReceiverId(), m.getReceiver() != null ? m.getReceiver().getUsername() : "用户" + m.getReceiverId(), m.getReceiver() != null ? m.getReceiver().getAvatar() : null, m, false);
+            User other = userRepository.selectById(m.getReceiverId());
+            m.setReceiver(other);
+            putConversation(convMap, userId, m.getReceiverId(),
+                    other != null ? other.getUsername() : "用户" + m.getReceiverId(),
+                    other != null ? other.getAvatar() : null,
+                    other != null && other.isStudentVerifiedUser(), m, false);
         });
         return convMap.values().stream()
                 .sorted((a, b) -> {
@@ -79,12 +88,15 @@ public class MessageService {
                 .toList();
     }
 
-    private void putConversation(java.util.Map<Long, java.util.Map<String, Object>> convMap, Long meId, Long otherId, String username, String avatar, Message msg, boolean fromThem) {
+    private void putConversation(java.util.Map<Long, java.util.Map<String, Object>> convMap, Long meId, Long otherId, String username, String avatar, boolean studentVerified, Message msg, boolean fromThem) {
         java.util.Map<String, Object> conv = convMap.computeIfAbsent(otherId, k -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
-            map.put("otherUserId", otherId);
-            map.put("username", username);
-            map.put("avatar", avatar);
+map.put("otherUserId", otherId);
+        map.put("userId", otherId);
+        map.put("username", username);
+        map.put("avatar", avatar);
+        // 聊天窗口顶部的认证徽章需要这个字段
+        map.put("studentVerified", studentVerified);
             map.put("lastMessage", "");
             map.put("lastMessageTime", null);
             map.put("unreadCount", 0);

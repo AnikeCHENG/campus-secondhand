@@ -74,7 +74,10 @@
           </div>
           
           <div class="user-info">
-            <h1 class="user-name">{{ userInfo.username }}</h1>
+            <h1 class="user-name">
+              {{ userInfo.username }}
+              <VerifiedBadge :verified="userInfo.isStudentVerified" size="md" />
+            </h1>
             <p class="user-bio">{{ userInfo.bio || '这个人很懒，什么都没写~' }}</p>
             <div class="user-meta">
               <div class="meta-item">
@@ -145,9 +148,11 @@
           :class="{ active: activeTab === tab.id }"
           @click="activeTab = tab.id"
         >
-          <component :is="tab.icon" />
+          <!-- icon 为 null 时不渲染（学生认证 tab 没有对应图标组件） -->
+          <component :is="tab.icon" v-if="tab.icon" />
           <span>{{ tab.name }}</span>
-          <span class="tab-count">{{ tab.count }}</span>
+          <!-- count 为 null 表示该 tab 无计数概念（如学生认证是状态不是数量） -->
+          <span v-if="tab.count !== null" class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
 
@@ -282,6 +287,21 @@
                   <button v-if="order.statusCode === 0" class="order-btn primary" @click="goPay(order)">去支付</button>
                   <button v-if="order.statusCode === 2" class="order-btn primary" @click="confirmReceive(order)">确认收货</button>
                   <button v-if="order.statusCode === 0" class="order-btn danger" @click="cancelOrderItem(order)">取消订单</button>
+                  <!--
+                    评价只给「买家 + 已完成 + 未评价」的订单显示。
+                    三个条件缺一不可：卖家评自己无意义，未完成交易不该评价，
+                    已评价再给按钮会让用户点了之后才被告知重复。
+                  -->
+                  <button
+                    v-if="order.statusCode === 3 && order.isBuyer && !order.reviewed"
+                    class="order-btn primary"
+                    @click="openReviewDialog(order)"
+                  >评价</button>
+                  <button
+                    v-if="order.statusCode === 3 && order.reviewed"
+                    class="order-btn secondary"
+                    disabled
+                  >已评价</button>
                   <button class="order-btn secondary" @click="contactSeller(order)">{{ order.isBuyer ? '联系卖家' : '联系买家' }}</button>
                 </div>
               </div>
@@ -363,6 +383,103 @@
             :page-size="paging.history.size"
             :total="paging.history.total"
             @current-change="onHistoryPageChange" />
+        </div>
+
+        <!-- 学生认证：未认证显示表单，已认证显示学号与说明 -->
+        <div v-if="activeTab === 'verify'" class="verify-panel">
+          <section v-if="isStudentVerified" class="card verify-done">
+            <div class="verify-done__icon" aria-hidden="true">🎓</div>
+            <h3 class="verify-done__title">
+              已完成学生认证
+              <VerifiedBadge :verified="true" size="lg" />
+            </h3>
+            <p class="verify-done__meta">
+              学号 <strong>{{ userInfo.studentNo || '—' }}</strong>
+              <span v-if="userInfo.realName" class="verify-done__name">（{{ userInfo.realName }}）</span>
+            </p>
+            <p class="verify-hint">你发布的商品将免除 0.3% 平台服务费，商品页与聊天中会展示认证徽章。</p>
+          </section>
+
+          <section v-else class="card verify-form-card">
+            <h3 class="verify-title">学生认证</h3>
+            <p class="verify-hint">
+              认证后可免除平台 0.3% 服务费，并在商品详情、聊天窗口展示认证徽章。
+            </p>
+            <div class="field">
+              <label class="field-label" for="v-no">学号 <span class="required">*</span></label>
+              <input
+                id="v-no"
+                v-model="verifyForm.studentNo"
+                class="input"
+                type="text"
+                placeholder="20 开头的 10~12 位数字"
+                maxlength="20"
+              />
+            </div>
+            <div class="field">
+              <label class="field-label" for="v-name">真实姓名 <span class="required">*</span></label>
+              <input
+                id="v-name"
+                v-model="verifyForm.realName"
+                class="input"
+                type="text"
+                placeholder="请填写真实姓名"
+                maxlength="50"
+              />
+            </div>
+            <p v-if="verifyError" class="verify-error">{{ verifyError }}</p>
+            <button
+              class="btn btn-primary verify-submit"
+              type="button"
+              :disabled="verifying"
+              @click="handleStudentVerify"
+            >
+              {{ verifying ? '提交中…' : '提交认证' }}
+            </button>
+            <p class="verify-hint verify-hint--tip">
+              当前为模拟校验（仅校验学号格式与姓名非空），接口已预留，未来可对接教务系统或改为人工审核。
+            </p>
+          </section>
+        </div>
+
+        <!-- 评价对话框：自绘而非用 el-dialog，避免为一处交互引入额外依赖 -->
+        <div
+          v-if="reviewDialogVisible"
+          class="review-mask"
+          @click.self="closeReviewDialog"
+        >
+          <div class="review-dialog" role="dialog" aria-modal="true" aria-labelledby="review-title">
+            <h3 id="review-title" class="review-dialog__title">评价这笔交易</h3>
+            <p class="review-dialog__target">{{ reviewTarget?.title }}</p>
+
+            <div class="review-field">
+              <span class="review-label">评分 <span class="required">*</span></span>
+              <StarRating v-model="reviewRating" :size="26" />
+            </div>
+
+            <div class="review-field">
+              <label class="review-label" for="review-content">评价内容 <span class="optional">（选填）</span></label>
+              <textarea
+                id="review-content"
+                v-model="reviewContent"
+                class="review-textarea"
+                rows="3"
+                :maxlength="REVIEW_MAX_LENGTH"
+                placeholder="说说商品的实际状况，与描述是否一致"
+              ></textarea>
+              <span class="review-counter">{{ reviewContent.length }}/{{ REVIEW_MAX_LENGTH }}</span>
+            </div>
+
+            <div class="review-actions">
+              <button class="review-btn" type="button" @click="closeReviewDialog">取消</button>
+              <button
+                class="review-btn review-btn--primary"
+                type="button"
+                :disabled="reviewSubmitting"
+                @click="handleSubmitReview"
+              >{{ reviewSubmitting ? '提交中…' : '提交评价' }}</button>
+            </div>
+          </div>
         </div>
 
         <div v-if="activeTab === 'drafts'" class="drafts-list">
@@ -562,7 +679,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, h, onMounted } from 'vue'
+import { ref, reactive, computed, h, onMounted } from 'vue'
+import VerifiedBadge from '../components/VerifiedBadge.vue'
+import StarRating from '../components/StarRating.vue'
+import { submitReview, studentVerify, getOrderReview } from '../api/review'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -652,6 +772,8 @@ const tabs = ref([
   { id: 'listings', name: '我的发布', count: 0, icon: ShoppingBag },
   { id: 'favorites', name: '我的收藏', count: 0, icon: Heart },
   { id: 'orders', name: '我的订单', count: 0, icon: List },
+  // 学生认证 tab 不显示计数：它是状态而非数量，0/空数字会让人以为还有待办
+  { id: 'verify', name: '学生认证', count: null, icon: null },
   { id: 'history', name: '浏览历史', count: 0, icon: Clock },
   { id: 'drafts', name: '我的草稿', count: 0, icon: File }
 ])
@@ -669,6 +791,95 @@ const myDrafts = ref([])
  * 用同一个 page 会在切换 tab 时把另一个 tab 的页码带过去。</p>
  */
 const PAGED_TABS = ['favorites', 'history', 'orders']
+
+/* ---- 订单评价 ---- */
+const reviewDialogVisible = ref(false)
+const reviewTarget = ref(null)
+const reviewRating = ref(0)
+const reviewContent = ref('')
+const reviewSubmitting = ref(false)
+const REVIEW_MAX_LENGTH = 50
+
+/** 打开评价对话框：预填上一次的评分与内容，便于用户修改后重新提交 */
+function openReviewDialog(order) {
+  reviewTarget.value = order
+  reviewRating.value = 0
+  reviewContent.value = ''
+  reviewDialogVisible.value = true
+}
+
+/** 关闭对话框时清空草稿，避免下次打开残留上一次的内容 */
+function closeReviewDialog() {
+  reviewDialogVisible.value = false
+  reviewTarget.value = null
+  reviewRating.value = 0
+  reviewContent.value = ''
+}
+
+async function handleSubmitReview() {
+  if (!reviewTarget.value) return
+  if (reviewRating.value === 0) {
+    ElMessage.warning('请先选择星级评分')
+    return
+  }
+  reviewSubmitting.value = true
+  try {
+    const res = await submitReview(
+      reviewTarget.value.id,
+      reviewRating.value,
+      reviewContent.value.trim() || null
+    )
+    if (res.code === 200) {
+      // 立即标记为已评价，按钮会切成"已评价"禁用态，无需重新拉整个列表
+      const target = myOrders.value.find(o => o.id === reviewTarget.value.id)
+      if (target) {
+        target.reviewed = true
+        target.reviewRating = res.data?.rating
+        target.reviewContent = res.data?.content
+      }
+      ElMessage.success(res.message || '评价成功，感谢你的反馈')
+      closeReviewDialog()
+    } else {
+      ElMessage.error(res.message || '评价失败，请稍后重试')
+    }
+  } catch (e) {
+    ElMessage.error(e?.cause?.message || e?.message || '评价失败，请稍后重试')
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+
+/**
+ * 拉取各订单的评价状态。
+ *
+ * <p>逐个请求而不是让列表接口一起返回：评价状态只影响一个按钮的显隐，
+ * 为它让订单列表接口对每条订单都多查一次不划算。</p>
+ */
+async function loadReviewStates(orders) {
+  const candidates = orders.filter(o => o.statusCode === 3 && o.isBuyer)
+  if (candidates.length === 0) return
+  await Promise.all(candidates.map(async (order) => {
+    try {
+      const res = await getOrderReview(order.id)
+      order.reviewed = res.code === 200 && res.data != null
+      if (order.reviewed) {
+        order.reviewRating = res.data.rating
+        order.reviewContent = res.data.content
+      }
+    } catch {
+      // 评价状态取不到时按未评价处理：多给一个按钮好过让用户失去评价入口
+      order.reviewed = false
+    }
+  }))
+}
+
+/* ---- 学生认证 ---- */
+const verifyForm = reactive({ studentNo: '', realName: '' })
+const verifying = ref(false)
+const verifyError = ref('')
+
+/** 认证状态以 userInfo 为准：它来自 /api/user/profile，是服务端确认过的 */
+const isStudentVerified = computed(() => userInfo.value.isStudentVerified === true)
 const paging = reactive(
   Object.fromEntries(
     PAGED_TABS.map((id) => [id, { page: 1, size: 10, total: 0 }])
@@ -722,6 +933,10 @@ async function loadUserProfile() {
       userInfo.value.location = data.location || '校园'
       userInfo.value.qq = data.qq || ''
       userInfo.value.wechat = data.wechat || ''
+      // 认证状态与学号：徽章、认证表单都依赖这三个字段
+      userInfo.value.isStudentVerified = data.isStudentVerified === true
+      userInfo.value.studentNo = data.studentNo || ''
+      userInfo.value.realName = data.realName || ''
     }
   } catch (e) {
     console.error('Failed to load user profile:', e)
@@ -766,6 +981,36 @@ function loadDrafts() {
   if (draftsTab) draftsTab.count = drafts.length
 }
 
+/**
+ * 提交学生认证。
+ *
+ * <p>失败时把后端 message 落到表单下方而不是只弹一次 toast：
+ * 表单填写是一个需要反复修正的过程，错误信息必须留在原地。</p>
+ */
+async function handleStudentVerify() {
+  verifyError.value = ''
+  if (!verifyForm.studentNo.trim()) { verifyError.value = '请填写学号'; return }
+  if (!verifyForm.realName.trim()) { verifyError.value = '请填写真实姓名'; return }
+
+  verifying.value = true
+  try {
+    const res = await studentVerify(verifyForm.studentNo.trim(), verifyForm.realName.trim())
+    if (res.code === 200) {
+      userInfo.value.isStudentVerified = true
+      userInfo.value.studentNo = res.data?.studentNo || verifyForm.studentNo.trim()
+      userInfo.value.realName = res.data?.realName || verifyForm.realName.trim()
+      // 徽章只依赖 userInfo，无需改动 Pinia——认证态不是登录态的一部分
+      ElMessage.success(res.message || '认证成功')
+    } else {
+      verifyError.value = res.message || '认证失败，请稍后重试'
+    }
+  } catch (e) {
+    verifyError.value = e.message || '认证失败，请稍后重试'
+  } finally {
+    verifying.value = false
+  }
+}
+
 async function loadOrders() {
   try {
     const { page, size } = paging.orders
@@ -796,6 +1041,8 @@ async function loadOrders() {
       paging.orders.total = res.data.total ?? 0
       const ordersTab = tabs.value.find(t => t.id === 'orders')
       if (ordersTab) ordersTab.count = paging.orders.total
+      // 补齐"是否已评价"，决定评价按钮的显隐
+      await loadReviewStates(myOrders.value)
     } else {
       console.error('订单数据格式错误:', res)
     }
@@ -2844,6 +3091,35 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 .history-count { font-size: 13px; color: #9a9a92; }
+/* ---- 学生认证 ---- */
+.verify-panel { display: block; }
+.verify-title { font-size: var(--text-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-2); }
+.verify-hint { margin: var(--space-2) 0; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; }
+.verify-hint--tip { margin-top: var(--space-3); font-size: var(--text-xs); color: var(--text-3); }
+.verify-error { margin: var(--space-2) 0; font-size: var(--text-sm); color: var(--danger); }
+.verify-submit { margin-top: var(--space-2); }
+.verify-done { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-6); text-align: center; }
+.verify-done__icon { font-size: 32px; line-height: 1; }
+.verify-done__title { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+.verify-done__meta { font-size: var(--text-sm); color: var(--text-2); }
+.verify-done__meta strong { color: var(--text); font-family: var(--font-mono, monospace); }
+.verify-done__name { color: var(--text-3); }
+
+/* ---- 订单评价对话框 ---- */
+.review-mask { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: var(--space-4); background: rgba(0, 0, 0, 0.45); }
+.review-dialog { width: 100%; max-width: 420px; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-lg); }
+.review-dialog__title { font-size: var(--text-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-1); }
+.review-dialog__target { font-size: var(--text-sm); color: var(--text-3); margin-bottom: var(--space-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-field { margin-bottom: var(--space-4); }
+.review-label { display: block; margin-bottom: var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.review-textarea { width: 100%; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: var(--text-sm); font-family: inherit; resize: vertical; }
+.review-textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+.review-counter { display: block; margin-top: 4px; font-size: var(--text-xs); color: var(--text-3); text-align: right; }
+.review-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.review-btn { padding: var(--space-2) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-2); font-size: var(--text-sm); cursor: pointer; }
+.review-btn--primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+.review-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.optional { color: var(--text-3); font-weight: var(--weight-normal); }
 .pager { display: flex; justify-content: center; margin-top: var(--space-5); }
 .history-clear {
   display: inline-flex;

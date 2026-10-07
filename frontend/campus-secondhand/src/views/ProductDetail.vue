@@ -126,13 +126,21 @@
                 <img :src="seller.avatar || '/sample/phone.svg'" :alt="seller.username" />
               </div>
               <div class="seller-info">
-                <div class="seller-name">{{ seller.username || '卖家' }}</div>
-                <span class="badge badge-accent">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-                  </svg>
-                  已认证
-                </span>
+                <div class="seller-name">
+                  {{ seller.username || '卖家' }}
+                  <VerifiedBadge :verified="seller.isStudentVerified" size="sm" />
+                </div>
+                <!-- 好评率：SQL 实时聚合，无评价时显示「暂无评价」而不是 0% -->
+                <div v-if="reviewStats.hasReview" class="seller-rating">
+                  <StarRating :model-value="Math.round(reviewStats.averageRating || 0)" :readonly="true" :size="13" />
+                  <span class="seller-rating__text">
+                    好评率 <strong>{{ reviewStats.goodRate }}%</strong>
+                    <span class="seller-rating__muted">（{{ reviewStats.total }} 条评价）</span>
+                  </span>
+                </div>
+                <div v-else class="seller-rating">
+                  <span class="seller-rating__muted">暂无评价</span>
+                </div>
               </div>
 <button class="btn btn-outline" type="button"
                       :disabled="isOwnProduct"
@@ -172,6 +180,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getProductDetail } from '../api/product'
+import { getReviewStats } from '../api/review'
+import VerifiedBadge from '../components/VerifiedBadge.vue'
+import StarRating from '../components/StarRating.vue'
 import { getUserById } from '../api/user'
 import { createOrder } from '../api/order'
 import { checkFavorite, addFavorite, removeFavoriteById } from '../api/favorites'
@@ -180,6 +191,9 @@ const router = useRouter()
 const route = useRoute()
 const product = ref(null)
 const seller = ref({})
+/** 卖家评价统计；默认值对应"暂无评价"，避免首屏渲染时闪出 0% */
+const EMPTY_STATS = { total: 0, good: 0, averageRating: 0, goodRate: 0, hasReview: false }
+const reviewStats = ref(EMPTY_STATS)
 const loading = ref(true)
 const error = ref('')
 const currentImage = ref('')
@@ -261,8 +275,13 @@ async function fetchFavoriteState() {
 
 async function fetchSellerInfo(userId) {
   try {
-    const res = await getUserById(userId)
-    if (res.code === 200 && res.data) seller.value = res.data
+    const [info, stats] = await Promise.all([
+      getUserById(userId),
+      // 好评率拉取失败不应让整个卖家卡片消失，故各自兜底而非一起 await 抛出
+      getReviewStats(userId).catch(() => null)
+    ])
+    if (info.code === 200 && info.data) seller.value = info.data
+    reviewStats.value = stats?.code === 200 && stats.data ? stats.data : EMPTY_STATS
   } catch (e) {
     console.error('Failed to fetch seller info:', e)
   }
@@ -454,7 +473,11 @@ onMounted(fetchProduct)
 .seller-avatar { width: 52px; height: 52px; border-radius: var(--radius-full); overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); background: var(--surface-3); }
 .seller-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .seller-info { flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.seller-name { font-size: var(--text-base); font-weight: var(--weight-medium); }
+.seller-name { font-size: var(--text-base); font-weight: var(--weight-medium); display: inline-flex; align-items: center; gap: var(--space-1); }
+.seller-rating { display: inline-flex; align-items: center; gap: var(--space-2); }
+.seller-rating__text { font-size: var(--text-sm); color: var(--text-2); }
+.seller-rating__text strong { color: var(--accent); font-weight: var(--weight-semibold); }
+.seller-rating__muted { font-size: var(--text-xs); color: var(--text-3); }
 
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 .actions .btn { height: 46px; }
