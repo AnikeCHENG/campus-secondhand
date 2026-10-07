@@ -134,6 +134,12 @@ const routes = [
     component: () => import('../views/Admin/AdminMessages.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
+  {
+    path: '/admin/reports',
+    name: 'AdminReports',
+    component: () => import('../views/Admin/AdminReports.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
 ]
 
 const router = createRouter({

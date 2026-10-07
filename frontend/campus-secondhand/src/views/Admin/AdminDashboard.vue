@@ -41,6 +41,12 @@
           </span>
           <span>消息管理</span>
         </router-link>
+        <router-link to="/admin/reports" class="menu-item">
+          <span class="menu-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V4a2 2 0 0 1 2-2h12l4 4v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" /><path d="M16 2v4h4" /><path d="M12 12v4" /><path d="M10 14h4" /></svg>
+          </span>
+          <span>举报管理</span>
+        </router-link>
       </nav>
 
       <div class="admin-stats">
