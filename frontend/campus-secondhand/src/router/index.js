@@ -73,9 +73,22 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    // 批量收银台：静态段须声明在 /payment/:orderId 之前，避免被动态段吞掉
+    path: '/payment/batch',
+    name: 'BatchPayment',
+    component: () => import('../views/BatchPayment.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/payment/:orderId',
     name: 'Payment',
     component: () => import('../views/Payment.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/cart',
+    name: 'Cart',
+    component: () => import('../views/Cart.vue'),
     meta: { requiresAuth: true }
   },
   // 404 兜底：任何未匹配的路径都渲染提示页而不是空白页

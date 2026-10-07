@@ -165,6 +165,36 @@
               </svg>
               {{ isFavorited ? '已收藏' : '收藏' }}
             </button>
+            <!--
+  加购按钮四态：
+  已加购 1.5s → 已在购物车（点击跳购物车）
+  非在售   → 不可购买（禁用）
+  自己的   → 整块不渲染
+  默认     → 加入购物车
+-->
+            <button
+              v-if="!isOwnProduct"
+              ref="cartBtnRef"
+              class="btn btn-outline cart-btn"
+              :class="{ 'cart-btn--incart': inCart }"
+              type="button"
+              :disabled="addingToCart || product.status !== 1 || justAdded"
+              @click="onCartBtnClick"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <circle cx="9" cy="21" r="1.5" /><circle cx="20" cy="21" r="1.5" />
+                <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
+              </svg>
+              {{ cartBtnText }}
+            </button>
+            <button
+              v-if="!isOwnProduct && product.status !== 1"
+              class="btn btn-outline cart-btn"
+              type="button"
+              disabled
+            >
+              该商品不可购买
+            </button>
             <button v-if="product.status === 1" class="btn btn-primary" type="button" :disabled="buying" @click="buyProduct">
               {{ buying ? '处理中…' : '立即购买' }}
             </button>
@@ -172,6 +202,10 @@
         </div>
       </div>
     </main>
+    <!-- 动作 Toast 与飞入动画：加购成功的第2、3 层反馈 -->
+    <CartActionToast v-if="toast" :key="toast.key" :message="toast.message" :actions="toast.actions" />
+    <FlyToCart ref="flyRef" />
+
   </div>
 </template>
 
@@ -185,6 +219,9 @@ import VerifiedBadge from '../components/VerifiedBadge.vue'
 import StarRating from '../components/StarRating.vue'
 import { getUserById } from '../api/user'
 import { createOrder } from '../api/order'
+import { addToCart, getCartCount, getCartList, checkoutCart, cartErrorMessage } from '../api/cart'
+import CartActionToast from '../components/CartActionToast.vue'
+import FlyToCart from '../components/FlyToCart.vue'
 import { checkFavorite, addFavorite, removeFavoriteById } from '../api/favorites'
 
 const router = useRouter()
@@ -202,6 +239,16 @@ const favBusy = ref(false)
 /** 自增 key，用于重播收藏成功的弹跳动画 */
 const favPopKey = ref(0)
 const buying = ref(false)
+const addingToCart = ref(false)
+/** 商品是否已在购物车：进页面查一次 /cart/list，不是每次点都靠后端纠正 */
+const inCart = ref(false)
+/** 加购成功后的 1.5s 过渡态 */
+const justAdded = ref(false)
+const checkingOut = ref(false)
+const cartBtnRef = ref(null)
+const flyRef = ref(null)
+/** 当前展示的动作 Toast；用 key 强制重建以便连续触发时重新计时 */
+const toast = ref(null)
 
 const productImages = computed(() => {
   if (!product.value?.images) return ['/sample/phone.svg']
@@ -219,6 +266,7 @@ async function fetchProduct() {
       currentImage.value = productImages.value[0]
       if (product.value.userId) await fetchSellerInfo(product.value.userId)
       await fetchFavoriteState()
+      await fetchCartState()
     }
   } catch (e) {
     error.value = e.message || '加载商品详情失败'
@@ -270,6 +318,29 @@ async function fetchFavoriteState() {
     if (res.code === 200) isFavorited.value = !!res.data
   } catch {
     // 未登录/网络异常不影响商品展示
+  }
+}
+
+/**
+ * 进页面查一次购物车，判断该商品是否已加购。
+ *
+ * <p>不做这一步的话按钮永远显示「加入购物车」，用户会反复点，
+ * 而后端每次都回 400「已在购物车」——状态不真实。</p>
+ */
+async function fetchCartState() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) {
+    inCart.value = false
+    return
+  }
+  try {
+    const res = await getCartList()
+    inCart.value = (res?.data?.items || []).some(
+      (item) => Number(item.productId) === Number(product.value.id)
+    )
+  } catch {
+    // 查不到就按未加购处理：多给一个按钮好过让用户失去加购入口
+    inCart.value = false
   }
 }
 
@@ -332,6 +403,114 @@ function contactSeller() {
       seller: seller.value.username
     }
   })
+}
+
+/**
+ * 加入购物车：二手孤品，无数量概念。
+ *
+ * <p>加购成功后走三层反馈——按钮转「已在购物车」、带按钮的动作 Toast、
+ * 缩略图飞入导航角标——三处同步，避免用户怀疑点击没生效。</p>
+ */
+async function addToCartNow() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) {
+    ElMessage.warning('请先登录后再加入购物车')
+    router.push({ path: '/login', query: { redirect: `/products/${product.value.id}` } })
+    return
+  }
+  addingToCart.value = true
+  try {
+    await addToCart(product.value.id)
+    inCart.value = true
+    justAdded.value = true
+    // 1.5 秒后由「已加入 ✓」转为永久的「已在购物车」
+    setTimeout(() => { justAdded.value = false }, 1500)
+
+    // ② 动作 Toast
+    showCartToast('已加入购物车', [
+      { label: '查看购物车', onClick: () => router.push('/cart') },
+      { label: '去结算', kind: 'primary', onClick: goCheckout }
+    ])
+
+    // ③ 缩略图飞入导航购物车图标
+    flyRef.value?.fly(product.value.images, cartBtnRef.value)
+
+    // 角标：先本地 +1 让反馈即时，再由服务端计数纠正
+    window.dispatchEvent(new CustomEvent('cart:add'))
+    try {
+      const countRes = await getCartCount()
+      window.dispatchEvent(new CustomEvent('cart:count', { detail: countRes?.data?.count ?? null }))
+    } catch { /* 忽略：角标稍后会被下次拉取纠正 */ }
+  } catch (error) {
+    const msg = cartErrorMessage(error, '加入购物车失败，请重试')
+    if (msg.includes('已在购物车')) {
+      // 重复加购不是错误：给出「去结算」出口，让用户不必先去购物车页
+      inCart.value = true
+      showCartToast('已在购物车', [{ label: '去结算', kind: 'primary', onClick: goCheckout }])
+    } else {
+      ElMessage.error(msg)
+    }
+  } finally {
+    addingToCart.value = false
+  }
+}
+
+/** 加购按钮点击：已在购物车则直接跳购物车，否则执行加购 */
+function onCartBtnClick() {
+  if (inCart.value) {
+    router.push('/cart')
+    return
+  }
+  addToCartNow()
+}
+
+const cartBtnText = computed(() => {
+  if (addingToCart.value) return '加入中…'
+  if (justAdded.value) return '已加入 ✓'
+  if (inCart.value) return '已在购物车'
+  return '加入购物车'
+})
+
+/** 展示带按钮的动作 Toast */
+function showCartToast(message, actions) {
+  toast.value = { message, actions, key: Date.now() }
+}
+
+/**
+ * 一键直达批量收银台。
+ *
+ * <p>取购物车里全部有效商品直接结算，跳过购物车页——想慢慢挑的用户走「查看购物车」。</p>
+ */
+async function goCheckout() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) {
+    router.push({ path: '/login', query: { redirect: `/products/${product.value.id}` } })
+    return
+  }
+  checkingOut.value = true
+  try {
+    const res = await getCartList()
+    const validIds = (res?.data?.items || []).filter((i) => i.valid).map((i) => i.productId)
+    if (!validIds.length) {
+      ElMessage.warning('购物车里没有可结算的商品')
+      return
+    }
+    const co = await checkoutCart(validIds)
+    const orderIds = co?.data?.orderIds || []
+    const skipped = co?.data?.skipped || []
+    if (!orderIds.length) {
+      ElMessage.error('结算失败，购物车内的商品均无法下单')
+      return
+    }
+    if (skipped.length) {
+      ElMessage.warning(`有 ${skipped.length} 件商品未能下单，已为你结算其余商品`)
+    }
+    router.push({ path: '/payment/batch', query: { orderIds: orderIds.join(',') } })
+  } catch (e) {
+    ElMessage.error(cartErrorMessage(e, '结算失败，请稍后重试'))
+  } finally {
+    checkingOut.value = false
+  }
 }
 
 async function buyProduct() {

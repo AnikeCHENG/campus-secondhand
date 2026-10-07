@@ -33,6 +33,17 @@
             </svg>
           </button>
 
+          <button class="icon-btn cart-icon" data-cart-icon type="button" aria-label="购物车" @click="go('/cart')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="9" cy="21" r="1.5" />
+              <circle cx="20" cy="21" r="1.5" />
+              <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
+            </svg>
+            <span v-if="cartCount > 0" class="notify-badge">
+              {{ cartCount > 99 ? '99+' : cartCount }}
+            </span>
+          </button>
+
           <button class="icon-btn" type="button" aria-label="消息" @click="go('/messages')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -379,18 +390,40 @@ import DashboardCard from '../components/DashboardCard.vue'
 import RecentItems from '../components/RecentItems.vue'
 import Recommendations from '../components/Recommendations.vue'
 import VideoBackground from '../components/VideoBackground.vue'
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { logout } from '../api/auth'
 import { getProductList, searchProducts } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
 import { useNotificationStore } from '../stores/notification'
 import { useUserStore } from '../stores/user'
 import { useMessageNotify } from '../composables/useMessageNotify'
+import { getCartCount } from '../api/cart'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
 const userStore = useUserStore()
 const { soundEnabled, toggleSound } = useMessageNotify()
+
+/** 购物车角标：进页面拉一次，之后由 cart:add / cart:count 事件驱动 */
+const cartCount = ref(0)
+
+async function refreshCartCount() {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  if (!token) { cartCount.value = 0; return }
+  try {
+    const res = await getCartCount()
+    cartCount.value = Number(res?.data?.count ?? 0) || 0
+  } catch { /* 静默：角标失败不影响主流程 */ }
+}
+
+function onCartAdd() {
+  cartCount.value += 1
+}
+
+function onCartCount(e) {
+  if (typeof e.detail === 'number') cartCount.value = e.detail
+  else refreshCartCount()
+}
 
 const showSearch = ref(false)
 const searchKeyword = ref('')
@@ -663,6 +696,15 @@ onMounted(() => {
   loadSearchHistory()
   loadProducts()
   loadDashboard()
+  refreshCartCount()
+  // 商品详情页加购成功后派发这两个事件做角标即时反馈
+  window.addEventListener('cart:add', onCartAdd)
+  window.addEventListener('cart:count', onCartCount)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('cart:add', onCartAdd)
+  window.removeEventListener('cart:count', onCartCount)
 })
 
 function getDay(time) {
@@ -774,6 +816,18 @@ function getMonth(time) {
   text-align: center;
 }
 
+/* 角标弹跳：加购成功时给一次明确的"数字变了"的视觉反馈 */
+.cart-icon { position: relative; }
+.cart-icon--pulse .notify-badge { animation: badge-bounce 520ms var(--ease); }
+@keyframes badge-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.55); }
+  60%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-icon--pulse .notify-badge { animation: none; }
+}
 .avatar {
   width: 36px;
   height: 36px;

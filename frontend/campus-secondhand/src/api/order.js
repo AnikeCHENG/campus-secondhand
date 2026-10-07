@@ -114,3 +114,14 @@ export async function payOrder(orderId, payMethod) {
 export async function cancelOrderById(orderId) {
   return await request(`/orders/${orderId}/cancel`, { method: 'POST' })
 }
+
+/**
+ * 批量支付：事务内全部支付，每笔须 status=0 且属当前用户。
+ * Body { orderIds: [...] }，返回 { tradeNo, totalAmount }。
+ */
+export async function batchPayOrders(orderIds, payMethod = 'alipay') {
+  return await request('/orders/batch-pay', {
+    method: 'POST',
+    body: JSON.stringify({ orderIds, pay_method: payMethod })
+  })
+}
