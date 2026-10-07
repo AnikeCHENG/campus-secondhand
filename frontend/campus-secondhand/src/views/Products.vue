@@ -194,10 +194,10 @@
           </svg>
           <p v-if="searchKeyword">没有找到包含“{{ searchKeyword }}”的商品</p>
           <p v-else-if="activeCategory !== 'all'">该分类下暂无商品</p>
-          <p v-else-if="priceMin || priceMax || selectedCondition">没有符合筛选条件的商品</p>
+          <p v-else-if="priceMin || priceMax || selectedCondition !== null">没有符合筛选条件的商品</p>
           <p v-else>暂无商品</p>
           <div class="empty-actions">
-            <button v-if="searchKeyword || priceMin || priceMax || selectedCondition" class="btn btn-outline" type="button" @click="clearAllFilters">清除所有筛选</button>
+          <button v-if="searchKeyword || priceMin || priceMax || selectedCondition !== null" class="btn btn-outline" type="button" @click="clearAllFilters">清除所有筛选</button>
             <button class="btn btn-primary" type="button" @click="go('/post')">发布商品</button>
           </div>
         </div>
@@ -235,11 +235,18 @@
             </div>
             <div class="product-info">
               <h3 class="product-title">{{ product.title }}</h3>
-              <p class="product-desc">{{ product.description }}</p>
               <div class="product-meta">
                 <span v-if="product.category" class="tag">{{ product.category }}</span>
-                <span v-if="product.condition" class="tag">{{ product.condition }}</span>
+                <!-- 成色标签：越新颜色越绿，越旧越红，买家扫一眼就能判断 -->
+                <span
+                  v-if="product.conditionLevel !== null && product.conditionLevel !== undefined"
+                  class="tag tag-condition"
+                  :class="'level-' + product.conditionLevel"
+                >{{ conditionLabel(product.conditionLevel) }}</span>
+                <!-- 有瑕疵时给一个警示标记，具体描述在详情页 -->
+                <span v-if="product.flawDescription" class="tag tag-flaw">有瑕疵</span>
               </div>
+              <p class="product-desc">{{ product.description }}</p>
               <div class="product-footer">
                 <div class="product-price">
                   <span class="price-symbol">¥</span><span class="price-value">{{ formatPrice(product.price) }}</span>
@@ -283,17 +290,25 @@ const activeCategory = ref('all')
 const showAdvancedFilters = ref(false)
 const priceMin = ref('')
 const priceMax = ref('')
-const selectedCondition = ref('')
+// 成色筛选：null 表示不筛选；用 0 作为'未选'会与'全新'冲突，故以 null 为空
+const selectedCondition = ref(null)
 const selectedSort = ref('newest')
 const showSearchSuggestions = ref(false)
 const searchHistory = ref([])
 const priceError = ref('')
 
+/**
+ * 成色筛选项，value 为 0~4 整数。
+ *
+ * <p>此前这里是 {@code new/like-new/good/fair} 四个字符串，而后端存的是中文文本，
+ * 两边对不上——这个筛选从上线起就没生效过。现改为与 condition_level 对齐的整数。</p>
+ */
 const conditions = [
-  { value: 'new', label: '全新' },
-  { value: 'like-new', label: '几乎全新' },
-  { value: 'good', label: '良好' },
-  { value: 'fair', label: '一般' }
+  { value: 0, label: '全新' },
+  { value: 1, label: '99新' },
+  { value: 2, label: '95新' },
+  { value: 3, label: '9成新' },
+  { value: 4, label: '8成新以下' }
 ]
 
 const sortOptions = [
@@ -352,7 +367,7 @@ function currentFilters() {
     keyword: searchKeyword.value.trim(),
     minPrice: priceMin.value,
     maxPrice: priceMax.value,
-    condition: selectedCondition.value,
+    conditionLevel: selectedCondition.value,
     sort: SORT_PARAM[selectedSort.value] || 'newest'
   }
 }
@@ -410,7 +425,8 @@ async function selectCategory(category) { activeCategory.value = category; showA
 function applyFilters() { validatePriceRange(); if (!priceError.value) { showAdvancedFilters.value = false; reloadFromFirstPage() } }
 /** 成色：再点一次取消筛选，等价于不传该参数 */
 function toggleCondition(value) {
-  selectedCondition.value = selectedCondition.value === value ? '' : value
+  // 再点一次取消筛选：null 而非 ''，否则会把 conditionLevel=0（全新）误当成未选
+  selectedCondition.value = selectedCondition.value === value ? null : value
   reloadFromFirstPage()
 }
 /** 排序：排序变化同样必须回到第一页，否则第 3 页在新的顺序下毫无意义 */
@@ -418,7 +434,7 @@ function selectSort(value) {
   selectedSort.value = value
   reloadFromFirstPage()
 }
-function resetFilters() { priceMin.value = ''; priceMax.value = ''; priceError.value = ''; selectedCondition.value = ''; selectedSort.value = 'newest'; reloadFromFirstPage() }
+function resetFilters() { priceMin.value = ''; priceMax.value = ''; priceError.value = ''; selectedCondition.value = null; selectedSort.value = 'newest'; reloadFromFirstPage() }
 function validatePriceRange() {
   priceError.value = ''
   if (priceMin.value && priceMax.value) {
@@ -427,7 +443,7 @@ function validatePriceRange() {
 }
 function clearAllFilters() {
   searchKeyword.value = ''; activeCategory.value = 'all'; priceMin.value = ''; priceMax.value = ''
-  priceError.value = ''; selectedCondition.value = ''; selectedSort.value = 'newest'; showAdvancedFilters.value = false
+  priceError.value = ''; selectedCondition.value = null; selectedSort.value = 'newest'; showAdvancedFilters.value = false
   reloadFromFirstPage()
 }
 function viewProduct(id) { router.push(`/products/${id}`) }
@@ -443,6 +459,11 @@ function onCardMove(event) {
 function onCardLeave(event) {
   event.currentTarget.style.transform = ''
 }
+/** 成色等级 0~4 → 中文标签，与后端 ConditionLevel 一一对应 */
+function conditionLabel(level) {
+  return { 0: '全新', 1: '99新', 2: '95新', 3: '9成新', 4: '8成新及以下' }[level] ?? '未标注成色'
+}
+
 function formatPrice(price) { if (!price) return '0'; return parseFloat(price).toFixed(2) }
 function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
 function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
@@ -551,6 +572,14 @@ watch(() => route.fullPath, () => {
 .product-title { font-size: var(--text-base); font-weight: var(--weight-medium); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-desc { margin-top: 4px; font-size: var(--text-sm); color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; gap: var(--space-2); margin: var(--space-3) 0; }
+/* ---- 成色标签与瑕疵标记 ---- */
+.tag-condition { font-weight: var(--weight-medium); }
+.tag-condition.level-0 { background: #e8f5ee; color: #0b6e54; border-color: #b7e0cc; }
+.tag-condition.level-1 { background: #eef4ff; color: #2563eb; border-color: #c7d7fb; }
+.tag-condition.level-2 { background: #fdf6e3; color: #b07d12; border-color: #f0dfae; }
+.tag-condition.level-3 { background: #fdf1e7; color: #b45309; border-color: #f2d5b8; }
+.tag-condition.level-4 { background: #fdecec; color: #c0392b; border-color: #f3c9c9; }
+.tag-flaw { background: #fdecec; color: #c0392b; border-color: #f3c9c9; }
 .tag { padding: 2px 10px; font-size: var(--text-xs); color: var(--text-2); background: var(--surface-3); border-radius: var(--radius-full); }
 .product-footer { display: flex; align-items: baseline; justify-content: space-between; }
 .product-price { display: flex; align-items: baseline; gap: 1px; color: var(--accent); }

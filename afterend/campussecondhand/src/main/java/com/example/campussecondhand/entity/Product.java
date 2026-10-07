@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.campussecondhand.enums.ConditionLevel;
 import com.example.campussecondhand.enums.ProductStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
@@ -33,8 +34,11 @@ public class Product {
     @TableField("category")
     private String category;
 
-    @TableField("`condition`")
-    private String condition;
+    @TableField("condition_level")
+    private Integer conditionLevel;
+
+    @TableField("flaw_description")
+    private String flawDescription;
 
     @TableField("images")
     private String images;
@@ -91,8 +95,27 @@ public class Product {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
-    public String getCondition() { return condition; }
-    public void setCondition(String condition) { this.condition = condition; }
+    public Integer getConditionLevel() { return conditionLevel; }
+    public void setConditionLevel(Integer conditionLevel) { this.conditionLevel = conditionLevel; }
+
+    public String getFlawDescription() { return flawDescription; }
+    public void setFlawDescription(String flawDescription) { this.flawDescription = flawDescription; }
+
+    /**
+     * 成色的中文标签，供不需要引入枚举的调用方直接展示。
+     *
+     * <p>刻意不在实体里存标签字符串：那是冗余数据，改枚举忘了同步就会自相矛盾。
+     * 需要展示时调 {@link ConditionLevel#fromCode(Integer)} 现算。</p>
+     */
+    public String getConditionLabel() {
+        ConditionLevel level = ConditionLevel.fromCode(conditionLevel);
+        return level != null ? level.getLabel() : "未标注成色";
+    }
+
+    /** 是否声明无瑕疵：瑕疵说明为空即视为卖家承诺无明显瑕疵 */
+    public boolean isFlawFree() {
+        return flawDescription == null || flawDescription.isBlank();
+    }
 
     public String getImages() { return images; }
     public void setImages(String images) { this.images = images; }

@@ -92,8 +92,27 @@
 
           <div class="tags">
             <span class="tag">{{ getCategoryLabel(product.category) }}</span>
-            <span class="tag">{{ getConditionLabel(product.condition) }}</span>
+            <!-- 成色标签：越新越高亮，用 level-0..4 区分 -->
+            <span
+              v-if="product.conditionLevel !== null && product.conditionLevel !== undefined"
+              class="tag tag-condition"
+              :class="'level-' + product.conditionLevel"
+            >
+              {{ conditionLabel(product.conditionLevel) }}
+            </span>
           </div>
+
+          <!-- 瑕疵说明单独成块：这是买家判断值不值钱的关键信息，不能埋在描述里 -->
+          <section class="card block flaw-block" :class="{ 'flaw-block--free': isFlawFree }">
+            <h3 class="block-title">
+              瑕疵说明
+              <span v-if="isFlawFree" class="flaw-free-badge">卖家承诺无明显瑕疵</span>
+            </h3>
+            <p v-if="isFlawFree" class="description flaw-free-text">
+              卖家未填写瑕疵说明，交易前建议当面验货确认。
+            </p>
+            <p v-else class="description flaw-text">{{ product.flawDescription }}</p>
+          </section>
 
           <section class="card block">
             <h3 class="block-title">商品描述</h3>
@@ -347,10 +366,18 @@ function getCategoryLabel(category) {
   const categories = { books: '教材书籍', electronics: '电子产品', transport: '出行工具', gaming: '游戏数码', clothing: '服饰穿搭', living: '生活用品', other: '其他' }
   return categories[category] || category || '未分类'
 }
-function getConditionLabel(condition) {
-  const conditions = { new: '全新', 'like-new': '几乎全新', good: '良好', fair: '一般' }
-  return conditions[condition] || condition || '未标明'
+/**
+ * 成色等级 0~4 → 中文标签，与后端 {@code ConditionLevel} 一一对应。
+ *
+ * <p>未知等级返回「未标注成色」而不是悄悄显示"全新"——
+ * 成色直接影响买家对价格的预期，错标比不标更糟。</p>
+ */
+function conditionLabel(level) {
+  return { 0: '全新', 1: '99新', 2: '95新', 3: '9成新', 4: '8成新及以下' }[level] ?? '未标注成色'
 }
+
+/** 瑕疵说明为空（含 null / 空串 / 纯空白）即视为卖家声明无明显瑕疵 */
+const isFlawFree = computed(() => !product.value?.flawDescription?.trim())
 function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
 function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
 
@@ -362,6 +389,27 @@ onMounted(fetchProduct)
 </script>
 
 <style scoped>
+
+/* ---- 成色标签与瑕疵说明 ---- */
+.tag-condition { font-weight: var(--weight-medium); border-color: var(--border); }
+.tag-condition.level-0 { background: #e8f5ee; color: #0b6e54; border-color: #b7e0cc; }
+.tag-condition.level-1 { background: #eef4ff; color: #2563eb; border-color: #c7d7fb; }
+.tag-condition.level-2 { background: #fdf6e3; color: #b07d12; border-color: #f0dfae; }
+.tag-condition.level-3 { background: #fdf1e7; color: #b45309; border-color: #f2d5b8; }
+.tag-condition.level-4 { background: #fdecec; color: #c0392b; border-color: #f3c9c9; }
+.flaw-block { border-left: 3px solid var(--border); }
+.flaw-block--free { border-left-color: #0b6e54; background: #f7fbf9; }
+.flaw-free-badge {
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm, 4px);
+  background: #e8f5ee;
+  color: #0b6e54;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-normal);
+}
+.flaw-free-text { color: var(--text-3); font-size: var(--text-sm); }
+.flaw-text { color: var(--text); white-space: pre-wrap; }
 .site-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-4); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex: 1; }

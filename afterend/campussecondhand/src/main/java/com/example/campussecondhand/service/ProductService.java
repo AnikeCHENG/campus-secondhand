@@ -45,16 +45,14 @@ public class ProductService {
      * 改成服务端分页后若仍保留那套前端逻辑，筛选只会作用在当前页的十几条记录上，
      * 结果直接失真——所以筛选与排序必须与分页在同一条 SQL 内完成。</p>
      *
-     * <p>{@code condition} 是 MySQL 保留字（建表语句中已加反引号），
-     * {@code eq("condition", …)} 会直接语法报错，必须写成 {@code `condition`}。</p>
-     *
-     * @param paging 分页参数（已由 {@code PageParam} 校验）
-     * @param sort   {@code newest} / {@code priceAsc} / {@code priceDesc} / {@code hot}，
-     *               未知值按 {@code newest} 处理
+* @param paging 分页参数（已由 {@code PageParam} 校验）
+     * @param conditionLevel 成色等级 0~4；{@code null} 表示不筛选
+     * @param sort   {@code newest} / {@code priceAsc} / {@code priceDesc} / {@code hot} /
+     *               {@code condition}，未知值按 {@code newest} 处理
      */
     public IPage<Product> pageAvailable(PageParam paging, String category, String keyword,
                                         BigDecimal minPrice, BigDecimal maxPrice,
-                                        String condition, String sort) {
+                                        Integer conditionLevel, String sort) {
         QueryWrapper<Product> wrapper = new QueryWrapper<>();
         wrapper.eq("status", ProductStatus.ON_SALE.getCode());
 
@@ -71,15 +69,18 @@ public class ProductService {
         if (maxPrice != null) {
             wrapper.le("price", maxPrice);
         }
-        if (condition != null && !condition.isBlank()) {
-            // 反引号不可省：condition 是 SQL 保留字
-            wrapper.eq("`condition`", condition);
+        if (conditionLevel != null) {
+            // 成色已规范为 TINYINT，可直接比较与建索引；旧实现用 VARCHAR 中文文本，
+            // 前端传 new/like-new/good/fair 与库值不匹配，筛选一直是失效的
+            wrapper.eq("condition_level", conditionLevel);
         }
 
         switch (sort == null ? "" : sort) {
             case "priceAsc" -> wrapper.orderByAsc("price");
             case "priceDesc" -> wrapper.orderByDesc("price");
             case "hot" -> wrapper.orderByDesc("view_count");
+            // 成色升序即"从新到旧"；追加 id 保证同成色下顺序确定
+            case "condition" -> wrapper.orderByAsc("condition_level", "created_time");
             default -> wrapper.orderByDesc("created_time");
         }
 

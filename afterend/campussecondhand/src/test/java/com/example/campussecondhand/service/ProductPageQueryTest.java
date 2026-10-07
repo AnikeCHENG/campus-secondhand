@@ -115,16 +115,41 @@ class ProductPageQueryTest {
         assertThat(sql).contains("price <=");
     }
 
-    @Test
-    @DisplayName("condition 是 MySQL 保留字，必须带反引号")
-    void quotesReservedWordCondition() {
+@Test
+    @DisplayName("成色按 condition_level 整数等值筛选，可排序可建索引")
+    void filtersByConditionLevel() {
         when(productRepository.selectPage(any(), any())).thenReturn(emptyPage());
 
-        productService.pageAvailable(PageParam.of(1, 10), null, null,
-                null, null, "9成新", "newest");
+        productService.pageAvailable(PageParam.of(1, 10), null, null, null, null, 2, "newest");
 
         String sql = captureWrapper().getTargetSql().replaceAll("\\s+", " ").trim();
-        assertThat(sql).contains("`condition` =");
+        // 规范化成 TINYINT 后才可能做等值筛选：旧实现是 VARCHAR 中文文本，
+        // 前端传 new/like-new/good/fair 与库值对不上，该筛选一直是失效的
+        assertThat(sql).contains("condition_level =");
+        assertThat(captureWrapper().getParamNameValuePairs()).containsValue(2);
+    }
+
+    @Test
+    @DisplayName("成色升序即从新到旧，追加 id 保证同成色下顺序确定")
+    void sortsByCondition() {
+        when(productRepository.selectPage(any(), any())).thenReturn(emptyPage());
+
+        productService.pageAvailable(PageParam.of(1, 10), null, null, null, null, null, "condition");
+
+        String sql = captureWrapper().getTargetSql().replaceAll("\\s+", " ").trim();
+        assertThat(sql).contains("ORDER BY condition_level ASC");
+        assertThat(sql).contains("created_time");
+    }
+
+    @Test
+    @DisplayName("成色为 null 时不追加该条件，即不过滤成色")
+    void skipsConditionFilterWhenAbsent() {
+        when(productRepository.selectPage(any(), any())).thenReturn(emptyPage());
+
+        productService.pageAvailable(PageParam.of(1, 10), null, null, null, null, null, "newest");
+
+        assertThat(captureWrapper().getTargetSql().toUpperCase())
+                .doesNotContain("CONDITION_LEVEL");
     }
 
     @Test

@@ -61,20 +61,7 @@
                 <option value="other">其他</option>
               </select>
             </div>
-            <div class="field">
-              <label class="field-label" for="p-cond">商品成色 <span class="required">*</span></label>
-              <select id="p-cond" v-model="form.condition" class="select" required>
-                <option value="">请选择成色</option>
-                <option value="全新">全新未使用</option>
-                <option value="几乎全新">几乎全新</option>
-                <option value="轻微使用痕迹">轻微使用痕迹</option>
-                <option value="明显使用痕迹">明显使用痕迹</option>
-                <option value="有磨损">有磨损/瑕疵</option>
-              </select>
-            </div>
-          </div>
 
-          <div class="form-row">
             <div class="field">
               <label class="field-label" for="p-price">商品价格 <span class="required">*</span></label>
               <div class="price-wrap">
@@ -99,6 +86,44 @@
             <label class="field-label" for="p-desc">详细描述 <span class="required">*</span></label>
             <textarea id="p-desc" v-model="form.description" class="textarea" placeholder="请详细描述商品的状态、使用时间、转手原因等…" rows="6" maxlength="500" required></textarea>
             <span class="char-count">{{ form.description.length }}/500</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="section-title">成色与瑕疵</h2>
+          <p class="section-hint">如实填写能显著降低买卖纠纷，买家最关心的就是用了多久、有没有毛病。</p>
+
+          <div class="field">
+            <label class="field-label" for="p-level">商品成色 <span class="required">*</span></label>
+            <div class="chip-row" role="radiogroup" aria-labelledby="p-level">
+              <button
+                v-for="lv in conditionLevels"
+                :key="lv.value"
+                class="chip"
+                :class="{ active: form.conditionLevel === lv.value }"
+                type="button"
+                role="radio"
+                :aria-checked="form.conditionLevel === lv.value"
+                @click="form.conditionLevel = lv.value"
+              >
+                {{ lv.label }}
+              </button>
+            </div>
+            <p class="form-hint">{{ selectedConditionHint }}</p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="p-flaw">瑕疵说明 <span class="optional">（选填）</span></label>
+            <textarea
+              id="p-flaw"
+              v-model="form.flawDescription"
+              class="textarea"
+              placeholder="请如实描述划痕、维修史等，无瑕疵可留空"
+              rows="4"
+              maxlength="255"
+            ></textarea>
+            <span class="char-count">{{ form.flawDescription.length }}/255</span>
+            <p class="form-hint">留空将展示为「卖家承诺无明显瑕疵」；填写后会公开展示在商品详情页。</p>
           </div>
         </section>
 
@@ -162,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { createProduct } from '../api/product'
 
@@ -170,14 +195,36 @@ const router = useRouter()
 const submitting = ref(false)
 const showSuccess = ref(false)
 
+/**
+ * 成色等级选项，value 与后端 {@code ConditionLevel} 的 code 一一对应。
+ *
+ * <p>不要在这里改 value：后端按 0~4 校验，传别的值会直接被 400 拒绝。
+ * 数值越大＝越旧。</p>
+ */
+const conditionLevels = [
+  { value: 0, label: '全新', hint: '未使用或仅试机' },
+  { value: 1, label: '99新', hint: '几乎全新，无明显使用痕迹' },
+  { value: 2, label: '95新', hint: '轻微使用痕迹，功能完好' },
+  { value: 3, label: '9成新', hint: '有正常使用痕迹' },
+  { value: 4, label: '8成新以下', hint: '明显磨损或存在瑕疵' }
+]
+
 const form = reactive({
   title: '',
   category: '',
-  condition: '',
+  /** 成色等级 0~4，null 表示未选（提交前会被拦下） */
+  conditionLevel: null,
+  /** 瑕疵说明，留空即视为无明显瑕疵 */
+  flawDescription: '',
   price: '',
   originalPrice: '',
   description: '',
   images: []
+})
+
+const selectedConditionHint = computed(() => {
+  const hit = conditionLevels.find(lv => lv.value === form.conditionLevel)
+  return hit ? hit.hint : '请选择一个成色等级'
 })
 
 function go(path) { router.push(path) }
@@ -214,8 +261,13 @@ function handleImageUpload(event) {
 function removeImage(index) { form.images.splice(index, 1) }
 
 async function handleSubmit() {
-  if (!form.title || !form.category || !form.condition || !form.price || !form.description) {
-    alert('请填写所有必填项')
+  // 成色单独提示：它比标题更容易被漏掉，混在"请填写完整信息"里看不出缺了什么
+  if (form.conditionLevel === null) {
+    alert('请选择商品成色')
+    return
+  }
+  if (!form.title || !form.category || !form.price || !form.description) {
+    alert('请填写完整信息')
     return
   }
   submitting.value = true
@@ -223,7 +275,9 @@ async function handleSubmit() {
     const res = await createProduct({
       title: form.title,
       category: form.category,
-      condition: form.condition,
+      conditionLevel: form.conditionLevel,
+      // 空串传 null 而非 ''，后端据此把"未填写"与"填了空"区分开
+      flawDescription: form.flawDescription.trim() || null,
       price: parseFloat(form.price),
       originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : null,
       description: form.description,
@@ -244,7 +298,7 @@ async function handleSubmit() {
 }
 
 function resetForm() {
-  form.title = ''; form.category = ''; form.condition = ''; form.price = ''
+  form.title = ''; form.category = ''; form.conditionLevel = null; form.flawDescription = ''; form.price = ''
   form.originalPrice = ''; form.description = ''; form.images = []
 }
 
@@ -270,6 +324,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
+
+/* ---- 成色与瑕疵 ---- */
+.section-hint { margin: 0 0 var(--space-4); font-size: var(--text-sm); color: var(--text-2); }
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+.optional { color: var(--text-3); font-weight: var(--weight-normal); }
+.form-hint { margin-top: var(--space-2); font-size: var(--text-xs); color: var(--text-3); }
 .site-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
 .header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
