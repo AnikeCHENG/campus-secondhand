@@ -29,6 +29,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -301,6 +303,122 @@ public class OrderController {
         view.put("content", review.getContent());
         view.put("createTime", review.getCreateTime());
         return view;
+    }
+
+    /**
+     * 批量支付：一次付清购物车结算出的全部订单。
+     *
+     * <p>Body: {@code { orderIds: "1,2,3", payMethod: "alipay" }}，
+     * 与前端 {@code api/order.js#batchPayOrders} 的契约一致。</p>
+     *
+     * <p><b>循环刻意写在 Controller 里而不是 OrderService 内部</b>：
+     * {@code payOrder} 带 {@code @Transactional}，若在同一个 Service 内
+     * 自调用（this.payOrder），事务不会通过代理生效，多笔支付会被并进一个事务，
+     * 任意一笔失败会导致已成功的支付一起回滚。这里经注入的 orderService 逐笔调用，
+     * 每笔各自开启并提交事务，因此部分失败不影响其余。</p>
+     *
+     * <p>{@code payOrder} 的业务失败是「返回 fail 而非抛异常」，故单笔失败
+     * 不会触发回滚；这里仍逐笔 catch，保证异常路径也不会中断整批。</p>
+     */
+    @PostMapping("/batch-pay")
+    public ResponseEntity<ApiResponse<?>> batchPay(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, Object> body) {
+        Optional<User> userOpt = getUserFromToken(authHeader);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error(401, "请先登录"));
+        }
+        Long userId = userOpt.get().getId();
+
+        String payMethod = body.get("payMethod") == null ? "alipay" : String.valueOf(body.get("payMethod"));
+        List<Long> orderIds = parseOrderIds(body.get("orderIds"));
+        if (orderIds.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error(400, "请选择要支付的订单"));
+        }
+
+        List<Long> successIds = new ArrayList<>();
+        List<Map<String, Object>> failed = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        String tradeNo = null;
+
+        for (Long orderId : orderIds) {
+            try {
+                PayResult result = orderService.payOrder(orderId, payMethod, userId);
+                if (result.isSuccess()) {
+                    successIds.add(orderId);
+                    if (tradeNo == null) {
+                        tradeNo = result.getTradeNo();
+                    }
+                    Order paid = orderRepository.selectById(orderId);
+                    if (paid != null) {
+                        BigDecimal price = paid.getPrice() == null ? BigDecimal.ZERO : paid.getPrice();
+                        BigDecimal shipping = paid.getShippingFee() == null ? BigDecimal.ZERO : paid.getShippingFee();
+                        totalAmount = totalAmount.add(price).add(shipping);
+                    }
+                } else {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("orderId", orderId);
+                    row.put("reason", result.getMessage());
+                    failed.add(row);
+                }
+            } catch (Exception e) {
+                log.error("批量支付订单 {} 失败: ", orderId, e);
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("orderId", orderId);
+                row.put("reason", "该订单支付失败");
+                failed.add(row);
+            }
+        }
+
+        if (successIds.isEmpty()) {
+            // 一笔都没成功：整体失败，前端据此展示错误而非"支付成功"
+            String reason = failed.isEmpty() ? "支付失败" : String.valueOf(failed.get(0).get("reason"));
+            return ResponseEntity.ok(ApiResponse.error(400, reason));
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("successIds", successIds);
+        data.put("failedIds", failed.stream().map(f -> f.get("orderId")).toList());
+        data.put("failed", failed);
+        data.put("totalAmount", totalAmount.setScale(2, RoundingMode.HALF_UP));
+        data.put("tradeNo", tradeNo);
+        data.put("paymentChannel", orderService.getPaymentChannel());
+        return ResponseEntity.ok(ApiResponse.success(
+                failed.isEmpty() ? "支付成功" : "部分订单支付成功", data));
+    }
+
+    /** orderIds 兼容数组 [1,2] 与逗号分隔字符串 "1,2" 两种形态 */
+    private List<Long> parseOrderIds(Object raw) {
+        List<Long> ids = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                Long id = toLongOrNull(item);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+            return ids;
+        }
+        if (raw != null) {
+            for (String part : String.valueOf(raw).split(",")) {
+                Long id = toLongOrNull(part);
+                if (id != null) {
+                    ids.add(id);
+                }
+            }
+        }
+        return ids;
+    }
+
+    private Long toLongOrNull(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(String.valueOf(raw).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** 取消订单：商品恢复为在售 */
