@@ -2,6 +2,10 @@
 afterend/campussecondhand/target/
 afterend/campussecondhand/backend.log
 
+# 本地启动脚本：内含开发机的绝对路径，换机器/换目录就跑不了，
+# 属于一次性调试产物，不进版本库。启动方式见 README 或直接跑 mvnw.cmd。
+backend-start.cmd
+
 # Node
 frontend/campus-secondhand/node_modules/
 frontend/campus-secondhand/dist/
