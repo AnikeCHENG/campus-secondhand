@@ -16,7 +16,7 @@
       <aside class="plaza-left">
         <!-- 用户名片：字段取不到就隐藏对应区域，不显示占位文案 -->
         <section class="card plaza-user">
-          <div class="avatar avatar-lg">
+          <div class="avatar avatar-lg avatar-ring">
             <img v-if="profile?.avatar" :src="profile.avatar" :alt="`${profile.nickname} 的头像`" />
             <template v-else>{{ (profile?.nickname || '?').charAt(0) }}</template>
           </div>
@@ -25,15 +25,22 @@
             <VerifiedBadge v-if="profile?.verified" :verified="true" size="sm" />
           </h2>
           <p v-if="profile?.grade">{{ profile.grade }}</p>
+          <!--
+            统计数字用 count-up 滚动到真实值。
+            首次数据到达后 start 一次即可：useCountUp 内部会在 target 变化时
+            从当前显示值续走，不需要每次都重启动画。
+          -->
           <div v-if="profile?.stats" class="user-stats">
-            <span><b>{{ profile.stats.posts }}</b>动态</span>
-            <span><b>{{ profile.stats.selling }}</b>在售</span>
-            <span><b>{{ profile.stats.seeking }}</b>求购</span>
+            <span><b>{{ postsCount }}</b>动态</span>
+            <span><b>{{ sellingCount }}</b>在售</span>
+            <span><b>{{ seekingCount }}</b>求购</span>
           </div>
           <p v-else-if="profileError" class="user-hint">{{ profileError }}</p>
         </section>
 
-        <button class="plaza-post-btn" type="button" @click="openComposer">+ 发布动态/商品</button>
+        <button class="plaza-post-btn" type="button" @click="openComposer">
+          <span>+ 发布动态/商品</span>
+        </button>
 
         <section class="card plaza-filter">
           <h3>分类筛选</h3>
@@ -136,11 +143,13 @@
 
         <!--
           卡片拆成 PostCard：父组件持有全部 Map，v-for 时查出派生状态传入。
-          这样卡片内部不感知全局状态，阶段 4 的动效作用域局限在单卡内。
+          v-reveal 做滚动入场 stagger：delay 按索引递增 80ms，
+          超过 5 张后封顶，否则长列表末尾要等近 1 秒才出现。
         -->
         <PostCard
-          v-for="post in posts"
+          v-for="(post, i) in posts"
           :key="post.id"
+          v-reveal="{ delay: Math.min(i, 5) * 80 }"
           :post="post"
           :is-expanded="!!expanded[post.id]"
           :is-liked="!!likedMap[post.id]"
@@ -176,12 +185,22 @@
             <button type="button" class="side-retry" @click="loadSidebar">重试</button>
           </p>
           <p v-else-if="hotTopics.length === 0" class="side-hint">还没有人用过话题标签</p>
-          <div v-else class="topic-list">
-            <span v-for="topic in hotTopics" :key="topic.tag" class="topic-item">
-              #{{ topic.tag }}
-              <em>{{ topic.count }}</em>
-            </span>
-          </div>
+          <!--
+            Top3 用渐变大字序号（排名即视觉权重），其余用小号中性序号。
+            序号单独成元素而非 ::before 伪元素：伪元素里的文字读屏软件不读。
+          -->
+          <ol v-else class="topic-list">
+            <li
+              v-for="(topic, i) in hotTopics"
+              :key="topic.tag"
+              class="topic-item"
+              :class="{ 'is-top': i < 3 }"
+            >
+              <span class="topic-rank" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="topic-name">#{{ topic.tag }}</span>
+              <em class="topic-count">{{ topic.count }}</em>
+            </li>
+          </ol>
         </section>
 
         <section class="card">
@@ -196,16 +215,18 @@
             <button type="button" class="side-retry" @click="loadSidebar">重试</button>
           </p>
           <p v-else-if="activeUsers.length === 0" class="side-hint">暂无活跃用户</p>
-          <div v-else>
-            <div v-for="user in activeUsers" :key="user.userId" class="active-user">
-              <div class="avatar">
+          <ul v-else class="active-user-list">
+            <li v-for="user in activeUsers" :key="user.userId" class="active-user">
+              <span class="avatar avatar-ring">
                 <img v-if="user.avatar" :src="user.avatar" :alt="`${user.username} 的头像`" />
                 <template v-else>{{ (user.username || '?').charAt(0) }}</template>
-              </div>
-              <span>{{ user.username }}</span>
-              <small>{{ user.subtitle }}</small>
-            </div>
-          </div>
+              </span>
+              <span class="au-body">
+                <b>{{ user.username }}</b>
+                <small>{{ user.subtitle }}</small>
+              </span>
+            </li>
+          </ul>
         </section>
 
         <section class="card">
@@ -225,6 +246,8 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PostCard from '../components/PostCard.vue'
 import VerifiedBadge from '../components/VerifiedBadge.vue'
+import { useCountUp } from '../composables/useCountUp'
+import { useReducedMotion } from '../composables/useReducedMotion'
 import { getHallProfile, getPosts, getPostTypes, createPost, getHotTopics, getActiveUsers } from '../api/plaza'
 import { toggleLike, getComments, addComment, shareProduct } from '../api/product'
 
@@ -333,11 +356,31 @@ function showToast(message) {
 }
 
 
+/* ---------- 名片统计数字：count-up 滚动到真实值 ----------
+ * 不用 computed 直接渲染 profile.stats：那样数字是"啪"地出现，
+ * 用户注意不到数字变了。useCountUp 内部监听 target 变化续走，
+ * 这里只需在数据到达后启动一次。
+ */
+const reducedMotion = useReducedMotion()
+const postsStat = computed(() => Number(profile.value?.stats?.posts) || 0)
+const sellingStat = computed(() => Number(profile.value?.stats?.selling) || 0)
+const seekingStat = computed(() => Number(profile.value?.stats?.seeking) || 0)
+
+const { display: postsCount, start: startPostsCount } = useCountUp(postsStat, { reduced: reducedMotion, duration: 800 })
+const { display: sellingCount, start: startSellingCount } = useCountUp(sellingStat, { reduced: reducedMotion, duration: 800 })
+const { display: seekingCount, start: startSeekingCount } = useCountUp(seekingStat, { reduced: reducedMotion, duration: 800 })
+
 /* ---------- 数据加载 ---------- */
 async function loadProfile() {
   try {
     const res = await getHallProfile()
     profile.value = res?.data || null
+    // 名片拿到后才启动数字滚动，且三者错开 90ms 形成层次
+    if (profile.value?.stats) {
+      startPostsCount()
+      setTimeout(startSellingCount, 90)
+      setTimeout(startSeekingCount, 180)
+    }
   } catch (err) {
     profile.value = null
     profileError.value = err?.response?.message || '名片加载失败'
@@ -591,17 +634,33 @@ onMounted(async () => {
 }
 
 .plaza-user { text-align: center; }
-.plaza-user h2, .card h3 { margin: 10px 0 4px; }
+.plaza-user h2 { margin: 10px 0 4px; }
 .plaza-user h2 { display: inline-flex; align-items: center; gap: 6px; }
-.plaza-user p, .feed-meta span, .announcement, .active-user small { color: var(--text-2); }
+.plaza-user p, .announcement, .active-user small { color: var(--text-2); }
 .plaza-user .user-hint { font-size: var(--text-xs); margin: var(--space-2) 0 0; }
+
+/* 区块标题：渐变字。用 background-clip:text 并保留 color 作为降级/兜底色，
+   浏览器不支持 background-clip:text 时文字仍是可读的深色而非透明。 */
+.plaza-left h3, .plaza-right h3 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm); font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
 
 .user-stats {
   display: flex; justify-content: space-around;
   gap: var(--space-2); margin-top: var(--space-4);
   padding-top: var(--space-4); border-top: 1px solid var(--border);
 }
-.user-stats b { display: block; font-size: var(--text-lg); color: var(--text); }
+/* 数字用等宽数位，滚动过程中宽度不跳 */
+.user-stats b {
+  display: block; font-size: var(--text-lg); color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 .user-stats span { font-size: var(--text-xs); color: var(--text-2); }
 
 .avatar {
@@ -613,18 +672,65 @@ onMounted(async () => {
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-lg { width: 64px; height: 64px; margin: 0 auto; font-size: var(--text-xl); }
 
-.plaza-post-btn, .feed-composer button, .feed-actions button, .plaza-filter button, .expand-btn {
+/* conic 光环：用 ::before 画在头像外圈。
+   刻意不加 overflow:hidden 到 .avatar-ring 上——那会把外扩的环裁掉。
+   降级时只去 animation，background 保留 → 静态渐变环。 */
+.avatar-ring { position: relative; isolation: isolate; }
+.avatar-ring::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--ring-size));
+  z-index: -1;
+  border-radius: 50%;
+  background: var(--ring-gradient);
+  animation: ring-spin var(--ring-spin) linear infinite;
+}
+@keyframes ring-spin { to { transform: rotate(1turn); } }
+
+.plaza-post-btn, .feed-composer button, .plaza-filter button, .expand-btn {
   border: 1px solid var(--border-strong); background: var(--surface);
   color: var(--text); padding: 8px 14px; border-radius: var(--radius);
   font-size: var(--text-sm); cursor: pointer;
-  transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease), transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
+
+/* 发布按钮：渐变底 + hover 扫光 + 轻微上浮。
+   扫光用 ::after 而非 background 渐变动画：这样文字颜色不用跟着动，
+   且扫光不会顶掉渐变底色。 */
 .plaza-post-btn {
+  position: relative; overflow: hidden;
   width: 100%; padding: var(--space-3);
-  background: var(--accent); color: #fff; border: none; font-weight: var(--weight-medium);
+  background: var(--grad-brand); color: #fff; border: none;
+  font-weight: var(--weight-medium);
 }
-.plaza-post-btn:hover { background: var(--accent-hover); }
-.plaza-filter button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.plaza-post-btn span { position: relative; z-index: 1; }
+.plaza-post-btn::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--grad-sheen);
+  opacity: 0;
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.plaza-post-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.28);
+}
+.plaza-post-btn:hover::after { opacity: 1; animation: sheen-sweep 850ms var(--ease) forwards; }
+@keyframes sheen-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* 分类筛选：选中项渐变胶囊 + 光晕；未选中 hover 平移 */
+.plaza-filter button:hover { transform: translateX(3px); }
+.plaza-filter button.active {
+  background: var(--grad-brand); border-color: transparent; color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.plaza-filter button.active:hover { transform: translateX(3px); }
 
 .plaza-feed { display: grid; gap: 16px; }
 .feed-composer { padding: 16px; }
@@ -705,28 +811,82 @@ onMounted(async () => {
 }
 .side-retry:hover { border-color: var(--accent); color: var(--accent); }
 
-.topic-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* 热门话题：Top3 用渐变大字序号，其余用小号中性序号。
+   序号是排名的视觉权重，不是装饰——第 1 和第 6 必须一眼能分辨。 */
+.topic-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .topic-item {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 10px; font-size: var(--text-xs); color: var(--text-2);
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 4px 8px; font-size: var(--text-xs); color: var(--text-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-.topic-item em { font-style: normal; color: var(--text-3); font-size: var(--text-xs); }
+.topic-item:hover { background: var(--surface-2); transform: translateX(3px); }
 
+.topic-rank {
+  flex: none; width: 18px; text-align: center;
+  font-size: var(--text-xs); font-weight: var(--weight-semibold);
+  color: var(--text-3); font-variant-numeric: tabular-nums;
+}
+.topic-item.is-top .topic-rank {
+  width: 22px; font-size: var(--text-lg); line-height: 1;
+  background: var(--grad-brand);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.topic-item.is-top:nth-child(2) .topic-rank { background: var(--grad-cool); }
+.topic-item.is-top:nth-child(3) .topic-rank { background: var(--grad-warm); }
+
+.topic-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.topic-count { font-style: normal; color: var(--text-3); font-size: var(--text-xs); }
+
+/* 活跃用户：hover 整行上浮 + 渐变光环 */
+.active-user-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.active-user {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2); border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.active-user:hover {
+  transform: translateY(-3px);
+  border-color: rgba(16, 185, 129, 0.35);
+  background: var(--surface-2);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
+}
+.au-body { display: grid; min-width: 0; }
+.au-body b {
+  font-size: var(--text-xs); color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.au-body small { font-size: var(--text-xs); color: var(--text-3); }
+
+/* shimmer 骨架屏：一道斜向高光扫过。
+   降级时改为固定灰阶（见文件末尾媒体查询），而不是停在首帧。 */
 .feed-skeleton { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 .sk {
+  position: relative; overflow: hidden;
   background: var(--surface-3); border-radius: var(--radius-sm);
-  animation: sk-pulse 1.4s ease-in-out infinite;
-  /* reduced-motion 下的静态等价物：固定的中间灰阶。
-     不用 animation:none —— 那会让它停在 opacity:1 的高亮态，
-     看起来像内容已加载，与真实加载态不符。 */
   --sk-rest-opacity: 0.7;
+}
+.sk::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--grad-sheen);
+  opacity: 0.6;
+  transform: translateX(-100%);
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 .sk-row { height: 36px; }
 .sk-line { height: 14px; }
 .sk-line--short { width: 40%; }
-@keyframes sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
 
 .plaza-toast {
   position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
@@ -750,20 +910,33 @@ onMounted(async () => {
   }
   .plaza-nav::-webkit-scrollbar { display: none; }
 }
-/* 降级为静态等价物，而非冻住动画：
-   骨架屏在 reduced-motion 下改为固定灰阶块（仍有"这是占位"的视觉暗示），
-   保留 transition 关闭但不移除元素的状态暗示。
+/* =========================================================
+   降级为静态等价物，而非冻住动画
 
-   注意：.feed-card 的 hover 降级规则在 PostCard.vue 里，不在这里——
-   卡片已经抽成子组件，scoped 属性不同，这里写就匹配不到了。 */
+   逐条对应（每条都保留"这件事发生了"的视觉暗示）：
+   - 光环 conic 渐变 → 保留静态渐变环，只停旋转
+   - 骨架 shimmer     → 固定灰阶块 + opacity .7（停动画会停在首帧 opacity:1，
+                        看起来像内容已加载，比不降级更糟）
+   - hover 位移/扫光  → 去 transform，保留阴影、边框、背景变化
+   - 数字 count-up    → 由 useCountUp 直接落终值（见 composables/useCountUp.js）
+
+   注意：.feed-card 的降级规则在 PostCard.vue 里，不在这里——
+   卡片是子组件，scoped 属性不同，这里写匹配不到。 */
 @media (prefers-reduced-motion: reduce) {
-  .sk {
-    animation: none;
-    opacity: var(--sk-rest-opacity, 0.7);
-  }
-  .plaza-nav,
-  .plaza-post-btn {
-    transition: none;
-  }
+  .sk::after { animation: none; opacity: 0; }
+  .sk { opacity: var(--sk-rest-opacity, 0.7); }
+
+  /* 光环：只停旋转，渐变背景保留 */
+  .avatar-ring::before { animation: none; }
+
+  /* hover 位移去掉，阴影与边框变化保留（不依赖运动） */
+  .plaza-post-btn:hover { transform: none; }
+  .plaza-post-btn::after { animation: none; opacity: 0; }
+  .plaza-filter button:hover,
+  .plaza-filter button.active:hover,
+  .topic-item:hover,
+  .active-user:hover { transform: none; }
+
+  .plaza-nav { transition: none; }
 }
 </style>
