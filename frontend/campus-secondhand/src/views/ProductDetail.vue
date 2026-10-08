@@ -1,32 +1,5 @@
 <template>
   <div class="page">
-    <header class="site-header">
-      <div class="container header-inner">
-        <button class="btn btn-ghost btn-sm" type="button" @click="goBack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-          </svg>
-          返回
-        </button>
-        <router-link to="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" />
-            </svg>
-          </span>
-          <span class="brand-name">校园二手</span>
-        </router-link>
-        <div class="header-actions">
-          <button class="icon-btn" type="button" aria-label="退出登录" @click="handleLogout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </header>
 
     <main class="page-main detail-main">
       <div v-if="loading" class="empty">
@@ -358,8 +331,6 @@ async function fetchSellerInfo(userId) {
   }
 }
 
-function goBack() { router.back() }
-
 
 /** 商品是否属于当前登录用户（用于禁用「联系卖家」） */
 const isOwnProduct = computed(() => {
@@ -579,10 +550,6 @@ const isFlawFree = computed(() => !product.value?.flawDescription?.trim())
 function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
 function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
 
-async function handleLogout() {
-  localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('justLoggedIn'); router.push('/login')
-}
-
 onMounted(fetchProduct)
 </script>
 
@@ -608,16 +575,7 @@ onMounted(fetchProduct)
 }
 .flaw-free-text { color: var(--text-3); font-size: var(--text-sm); }
 .flaw-text { color: var(--text); white-space: pre-wrap; }
-.site-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
-.header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-4); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex: 1; }
-.brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
-.brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
-.header-actions { display: flex; align-items: center; gap: var(--space-2); }
-.icon-btn { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--text-2); }
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
 .icon-btn svg { width: 20px; height: 20px; }
 
 .detail-main { max-width: 1080px; }

@@ -6,37 +6,6 @@
     其他浅色页面不受影响。
   -->
   <div class="page" data-plaza-dark>
-    <header class="site-header">
-      <div class="container header-inner">
-        <router-link to="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" />
-            </svg>
-          </span>
-          <span class="brand-name">校园二手</span>
-        </router-link>
-        <nav class="main-nav" aria-label="主导航">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/post" class="nav-link">发布</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-          <router-link to="/profile" class="nav-link">我的</router-link>
-        </nav>
-        <div class="header-actions">
-          <button class="icon-btn" type="button" aria-label="退出登录" @click="handleLogout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-          <button class="avatar" type="button" aria-label="个人中心" @click="go('/profile')">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%230b6e54'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%23ffffff'/%3E%3Cpath d='M8 36c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='%23ffffff'/%3E%3C/svg%3E" alt="用户头像" />
-          </button>
-        </div>
-      </div>
-    </header>
 
     <main class="page-main">
       <div class="page-head">
@@ -493,10 +462,6 @@ function conditionLabel(level) {
 function formatPrice(price) { if (!price) return '0'; return parseFloat(price).toFixed(2) }
 function getStatusClass(status) { return ({ 0: 'badge', 1: 'badge-success', 2: 'badge-danger' })[status] || 'badge-success' }
 function getStatusText(status) { return ({ 0: '已下架', 1: '在售', 2: '已售' })[status] || '在售' }
-async function handleLogout() {
-  localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('justLoggedIn'); router.push('/login')
-}
-
 onMounted(() => {
   loadSearchHistory()
   if (route.query.search) searchKeyword.value = route.query.search
@@ -555,48 +520,10 @@ watch(() => route.fullPath, () => {
    未连带改造其他 7 个页面的导航——它们各自复制了一份（nav-link 数量还各不相同，
    Home 7 项 / Plaza 4 项 / 其余 5 项），抽共享组件是另一个量级的重构。
    各页保持内部自洽：暗页面配暗导航，浅页面配浅导航。 */
-.site-header {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(10, 16, 19, 0.55);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-.brand-name {
-  font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #2dd4bf, #38bdf8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: var(--text);
-}
-.brand-mark { background: var(--grad-brand); }
-.header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
-.brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
-.brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
-.main-nav { display: flex; gap: var(--space-1); flex: 1; }
-.nav-link { padding: 8px 12px; font-size: var(--text-base); color: var(--text-2); border-radius: var(--radius-sm); transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
-.nav-link:hover { color: var(--text); background: var(--surface-3); }
 /* 当前项渐变下划线：用 ::after 而非 border-bottom，
    border 会占盒模型高度导致按下时整行跳动。 */
-.nav-link.router-link-exact-active {
-  color: var(--text); font-weight: var(--weight-medium);
-}
-.nav-link { position: relative; }
-.nav-link.router-link-exact-active::after {
-  content: "";
-  position: absolute; left: 12px; right: 12px; bottom: 2px;
-  height: 2px; border-radius: var(--radius-full);
-  background: linear-gradient(90deg, #2dd4bf, #38bdf8);
-}
-.header-actions { display: flex; align-items: center; gap: var(--space-2); }
-.icon-btn { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--text-2); transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
 .icon-btn svg { width: 20px; height: 20px; }
-.avatar { width: 36px; height: 36px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-full); overflow: hidden; background: var(--surface-3); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 /* 页头 */
@@ -938,7 +865,6 @@ watch(() => route.fullPath, () => {
 
 @media (max-width: 720px) {
   .products-grid { grid-template-columns: 1fr; }
-  .main-nav { display: none; }
   .page-head { flex-direction: column; align-items: flex-start; }
   /* 背景/边框继承下方 .site-footer 的玻璃样式，这里只改间距 */
   .site-footer { margin-top: var(--space-12); }
@@ -985,7 +911,6 @@ watch(() => route.fullPath, () => {
   .btn-ghost-glass,
   .search-bar,
   .overlay-btn,
-  .site-header,
   .filters-panel .input,
   .filters-panel .textarea,
   .filters-panel .select { transition: none; }

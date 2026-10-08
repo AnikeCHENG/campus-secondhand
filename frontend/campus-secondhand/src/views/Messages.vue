@@ -1,35 +1,5 @@
 <template>
   <div class="page messages-page">
-    <header class="site-header">
-      <div class="container header-inner">
-        <router-link to="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" />
-            </svg>
-          </span>
-          <span class="brand-name">校园二手</span>
-        </router-link>
-        <nav class="main-nav" aria-label="主导航">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/post" class="nav-link">发布</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-          <router-link to="/profile" class="nav-link">我的</router-link>
-        </nav>
-        <div class="header-actions">
-          <button class="icon-btn" type="button" aria-label="退出登录" @click="handleLogout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-          <button class="avatar" type="button" aria-label="个人中心" @click="go('/profile')">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%230b6e54'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%23ffffff'/%3E%3Cpath d='M8 36c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='%23ffffff'/%3E%3C/svg%3E" alt="用户头像" />
-          </button>
-        </div>
-      </div>
-    </header>
 
     <main class="msg-main">
       <div class="msg-shell">
@@ -158,11 +128,10 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import {
   getConversations,
   getConversation,
-  getUnreadCount,
   sendMessage as sendMessageApi,
   markAsRead
 } from '../api/message'
@@ -170,18 +139,25 @@ import { getUserById } from '../api/user'
 import { getProductDetail } from '../api/product'
 import { ElMessage } from 'element-plus'
 import { useNotificationStore } from '../stores/notification'
+import { useMessageNotify } from '../composables/useMessageNotify'
 import VerifiedBadge from '../components/VerifiedBadge.vue'
 
-const router = useRouter()
 const route = useRoute()
 const notificationStore = useNotificationStore()
+/**
+ * 未读数走单例：App.vue 已在 useMessageNotify 上启动 10 秒轮询。
+ * 此处此前另发两次 /messages/unread-count，与全局轮询并行，
+ * 是同一份数据的第二个请求源。
+ */
+const { poll: pollUnread } = useMessageNotify()
 const loading = ref(true)
 const activeTab = ref('received')
 const conversations = ref([])
 const selectedUserId = ref(null)
 const currentMessages = ref([])
 const newMessage = ref('')
-const unreadCount = ref(0)
+/** 全站未读数由 AppNavbar 消费，这里读同一 store，不再持有第二份 */
+const unreadCount = computed(() => notificationStore.unreadCount || 0)
 const messagesContainer = ref(null)
 /**
  * 当前登录用户 ID。
@@ -236,17 +212,12 @@ const isNewChat = computed(() =>
   !conversations.value.some(c => c.userId === selectedUserId.value)
 )
 
-function go(path) { router.push(path) }
 
 async function fetchMessages() {
   loading.value = true
   try {
-    const [convRes, unreadRes] = await Promise.all([getConversations(), getUnreadCount()])
-    if (unreadRes.code === 200 && unreadRes.data) {
-      const count = typeof unreadRes.data === 'object' ? (unreadRes.data.count || 0) : (unreadRes.data || 0)
-      unreadCount.value = count
-      notificationStore.setUnreadCount(count)
-    }
+    pollUnread()
+    const convRes = await getConversations()
     if (convRes.code === 200 && convRes.data) {
       conversations.value = convRes.data.map(c => ({
         userId: c.other_user_id || c.otherUserId || c.userId,
@@ -366,12 +337,9 @@ async function selectConversation(conv) {
       scrollToBottom()
       const unreadMessages = currentMessages.value.filter(m => m.senderId !== currentUserId.value && m.isRead === 0)
       for (const msg of unreadMessages) { try { await markAsRead(msg.id) } catch { console.log('标记已读失败') } }
-      const newUnreadRes = await getUnreadCount()
-      if (newUnreadRes.code === 200) {
-        const newCount = typeof newUnreadRes.data === 'object' ? (newUnreadRes.data.count || 0) : (newUnreadRes.data || 0)
-        unreadCount.value = newCount
-        notificationStore.setUnreadCount(newCount)
-      }
+      // 角标要立刻递减，不能等下一轮 10 秒轮询：先乐观本地递减，再触发单例回源校正
+      notificationStore.decrementUnreadCount()
+      pollUnread()
     }
   } catch (e) {
     console.error('加载对话失败:', e)
@@ -436,10 +404,6 @@ function formatMessageTime(time) {
   return new Date(time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-async function handleLogout() {
-  localStorage.removeItem('token'); localStorage.removeItem('username'); sessionStorage.removeItem('justLoggedIn'); router.push('/login')
-}
-
 watch(activeTab, () => { selectedUserId.value = null; currentMessages.value = [] })
 
 onMounted(async () => {
@@ -455,22 +419,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.site-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
-.header-inner { height: var(--header-h); display: flex; align-items: center; gap: var(--space-8); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
-.brand:hover { color: var(--text); }
-.brand-mark { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--accent); color: #fff; }
 .brand-mark svg { width: 17px; height: 17px; }
-.brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
-.main-nav { display: flex; gap: var(--space-1); flex: 1; }
-.nav-link { padding: 8px 12px; font-size: var(--text-base); color: var(--text-2); border-radius: var(--radius-sm); transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease); }
-.nav-link:hover { color: var(--text); background: var(--surface-3); }
-.nav-link.router-link-exact-active { color: var(--accent); font-weight: var(--weight-medium); }
-.header-actions { display: flex; align-items: center; gap: var(--space-2); }
-.icon-btn { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--text-2); }
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
 .icon-btn svg { width: 20px; height: 20px; }
-.avatar { width: 36px; height: 36px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-full); overflow: hidden; background: var(--surface-3); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .messages-page { display: flex; flex-direction: column; }
@@ -530,7 +480,6 @@ onMounted(async () => {
 .chat-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 @media (max-width: 860px) {
-  .main-nav { display: none; }
   .msg-shell { grid-template-columns: 1fr; }
   .sidebar { display: none; }
 }

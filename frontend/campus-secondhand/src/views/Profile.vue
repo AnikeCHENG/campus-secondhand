@@ -6,48 +6,6 @@
       <div class="gradient-sphere sphere-3"></div>
     </div>
 
-    <header class="main-header">
-      <div class="header-content">
-        <div class="logo-section" @click="go('/')">
-          <svg class="header-logo" viewBox="0 0 40 40">
-            <defs>
-              <linearGradient id="headerLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#10b981"/>
-                <stop offset="100%" style="stop-color:#3b82f6"/>
-              </linearGradient>
-            </defs>
-            <circle cx="20" cy="20" r="18" fill="url(#headerLogoGrad)"/>
-            <path d="M13 20 L18 24 L27 16" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <span class="brand-name">废旧物品再利用平台</span>
-        </div>
-        
-        <nav class="main-nav">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/post" class="nav-link">发布</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-          <span class="nav-link active">我的</span>
-        </nav>
-        
-        <div class="header-actions">
-          <button class="action-btn search-btn" @click="go('/products')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </button>
-          <button class="action-btn logout-btn" @click="handleLogout" title="退出登录">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </header>
-
     <main class="main-content">
       <div class="profile-header">
         <div class="profile-card">
@@ -684,16 +642,13 @@ import VerifiedBadge from '../components/VerifiedBadge.vue'
 import StarRating from '../components/StarRating.vue'
 import { submitReview, studentVerify, getOrderReview } from '../api/review'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '../stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { logout } from '../api/auth'
 import { updateProfile, getProfile } from '../api/user'
 import { getMyProducts, deleteProduct as deleteProductAPI } from '../api/product'
 import { getOrderList, confirmOrder, cancelOrder } from '../api/order'
 import { getFavoriteList, removeFavoriteById, getHistoryList, clearHistory } from '../api/favorites'
 
 const router = useRouter()
-const userStore = useUserStore()
 function go(path) { router.push(path) }
 
 const activeTab = ref('listings')
@@ -1225,19 +1180,6 @@ function formatDate(timestamp) {
   return date.toLocaleDateString('zh-CN')
 }
 
-async function handleLogout() {
-  // 先清身份缓存，再清 token
-  userStore.reset()
-  try { 
-    await logout() 
-  } catch {
-    console.log('Logout API call failed')
-  }
-  localStorage.removeItem('token')
-  localStorage.removeItem('username')
-  router.push('/login')
-}
-
 function editProfile() {
   openEditModal()
 }
@@ -1543,17 +1485,6 @@ onMounted(() => {
   75% { transform: translate(30px, 50px) scale(1.02); }
 }
 
-.main-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: rgba(15, 15, 35, 0.8);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .header-content {
   max-width: 1400px;
   margin: 0 auto;
@@ -1573,47 +1504,6 @@ onMounted(() => {
 .header-logo {
   width: 40px;
   height: 40px;
-}
-
-.brand-name {
-  font-size: 22px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #10b981, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.main-nav {
-  display: flex;
-  gap: 8px;
-}
-
-.nav-link {
-  padding: 10px 20px;
-  color: rgba(255, 255, 255, 0.7);
-  text-decoration: none;
-  font-size: 15px;
-  font-weight: 500;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.nav-link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.nav-link.active {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.15);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
 }
 
 .action-btn {
@@ -1641,7 +1531,6 @@ onMounted(() => {
 }
 
 .main-content {
-  padding-top: 100px;
   max-width: 1200px;
   margin: 0 auto;
   padding-left: 24px;
@@ -1665,36 +1554,6 @@ onMounted(() => {
   grid-template-columns: 150px 1fr auto auto;
   gap: 40px;
   align-items: center;
-}
-
-.avatar-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.avatar-wrapper {
-  position: relative;
-  width: 120px;
-  height: 120px;
-}
-
-.avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  position: relative;
-  z-index: 1;
-}
-
-.avatar-ring {
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981, #3b82f6, #8b5cf6);
-  animation: rotate 4s linear infinite;
 }
 
 @keyframes rotate {
@@ -2663,40 +2522,6 @@ onMounted(() => {
   padding: 24px;
 }
 
-.avatar-upload-section {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.avatar-upload {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 12px;
-  cursor: pointer;
-}
-
-.avatar-preview {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.avatar-edit-overlay {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.3s ease;
-  color: white;
-}
-
 .avatar-upload:hover .avatar-edit-overlay {
   opacity: 1;
 }
@@ -2709,19 +2534,6 @@ onMounted(() => {
 
 .avatar-edit-overlay span {
   font-size: 12px;
-}
-
-.avatar-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.avatar-tip {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  margin: 0;
 }
 
 .form-section {
@@ -2876,10 +2688,6 @@ onMounted(() => {
     padding: 12px 16px;
   }
 
-  .main-nav {
-    display: none;
-  }
-
   .main-content {
     padding-top: 80px;
     padding-left: 16px;
@@ -2890,10 +2698,6 @@ onMounted(() => {
     padding: 24px;
     grid-template-columns: 1fr;
     text-align: center;
-  }
-
-  .avatar-section {
-    align-items: center;
   }
 
   .user-meta {
@@ -2968,23 +2772,14 @@ onMounted(() => {
 .profile-page { background: var(--bg); font-family: var(--font-sans); }
 .animated-bg { display: none; }
 
-.main-header { position: sticky; background: rgba(255,255,255,0.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid var(--border); }
 .header-content { max-width: var(--container); height: var(--header-h); padding: 0 var(--space-6); }
 .header-logo { width: 30px; height: 30px; }
-.brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); background: none; -webkit-text-fill-color: currentColor; color: var(--text); letter-spacing: -0.01em; }
-.main-nav { gap: var(--space-1); }
-.nav-link { padding: 8px 12px; color: var(--text-2); border-radius: var(--radius-sm); }
-.nav-link:hover { color: var(--text); background: var(--surface-3); }
-.nav-link.active { color: var(--accent); background: var(--accent-soft); }
 .action-btn { width: 38px; height: 38px; border-radius: var(--radius); background: transparent; color: var(--text-2); border: 1px solid transparent; }
 .action-btn:hover { background: var(--surface-3); color: var(--text); transform: none; }
 
 .main-content { max-width: var(--container); padding: calc(var(--header-h) + var(--space-6)) var(--space-6) var(--space-16); }
 
 .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-8); gap: var(--space-8); }
-.avatar { width: 96px; height: 96px; border: 1px solid var(--border); }
-.avatar-wrapper { width: 96px; height: 96px; }
-.avatar-ring { inset: -4px; background: none; border: 2px solid var(--accent-soft-strong); animation: none; }
 .badge { border-radius: var(--radius-full); }
 .badge.verified { background: var(--accent-soft); color: var(--accent); }
 .badge.level { background: var(--warning-soft); color: var(--warning); }

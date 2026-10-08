@@ -1,89 +1,6 @@
 <template>
   <div class="page">
     <!-- 顶部导航 -->
-    <header class="site-header">
-      <div class="container header-inner">
-        <router-link to="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-              <path d="M3 21v-5h5" />
-            </svg>
-          </span>
-          <span class="brand-name">校园二手</span>
-        </router-link>
-
-        <nav class="main-nav" aria-label="主导航">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/plaza" class="nav-link">大厅</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/post" class="nav-link">发布</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-          <router-link to="/profile" class="nav-link">我的</router-link>
-          <router-link v-if="user.role === 1" to="/admin" class="nav-link">管理</router-link>
-        </nav>
-
-        <div class="header-actions">
-          <button class="icon-btn" type="button" aria-label="搜索" @click="toggleSearch">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-
-          <button class="icon-btn cart-icon" data-cart-icon type="button" aria-label="购物车" @click="go('/cart')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="9" cy="21" r="1.5" />
-              <circle cx="20" cy="21" r="1.5" />
-              <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
-            </svg>
-            <span v-if="cartCount > 0" class="notify-badge">
-              {{ cartCount > 99 ? '99+' : cartCount }}
-            </span>
-          </button>
-
-          <button class="icon-btn" type="button" aria-label="消息" @click="go('/messages')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            <span v-if="notificationStore.unreadCount > 0" class="notify-badge">
-              {{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}
-            </span>
-          </button>
-
-          <button class="icon-btn" type="button" :aria-label="soundEnabled ? '关闭提示音' : '开启提示音'" @click="toggleSound">
-            <svg v-if="soundEnabled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M11 5 6 9H2v6h4l5 4V5z" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M11 5 6 9H2v6h4l5 4V5z" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
-          </button>
-
-          <button class="icon-btn" type="button" aria-label="退出登录" @click="handleLogout">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
-
-          <button class="avatar" type="button" aria-label="个人中心" @click="go('/profile')">
-            <img
-              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%230b6e54'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%23ffffff'/%3E%3Cpath d='M8 36c0-6.6 5.4-12 12-12s12 5.4 12 12' fill='%23ffffff'/%3E%3C/svg%3E"
-              alt="用户头像"
-            />
-          </button>
-        </div>
-      </div>
-    </header>
 
     <!-- 搜索弹层 -->
     <div v-if="showSearch" class="search-overlay" @click.self="toggleSearch" role="dialog" aria-label="搜索">
@@ -390,40 +307,13 @@ import DashboardCard from '../components/DashboardCard.vue'
 import RecentItems from '../components/RecentItems.vue'
 import Recommendations from '../components/Recommendations.vue'
 import VideoBackground from '../components/VideoBackground.vue'
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { logout } from '../api/auth'
+import { ref, onMounted, nextTick } from 'vue'
 import { getProductList, searchProducts } from '../api/product'
 import { getDashboardStats } from '../api/dashboard'
-import { useNotificationStore } from '../stores/notification'
-import { useUserStore } from '../stores/user'
-import { useMessageNotify } from '../composables/useMessageNotify'
-import { getCartCount } from '../api/cart'
 
 const router = useRouter()
-const notificationStore = useNotificationStore()
-const userStore = useUserStore()
-const { soundEnabled, toggleSound } = useMessageNotify()
-
-/** 购物车角标：进页面拉一次，之后由 cart:add / cart:count 事件驱动 */
-const cartCount = ref(0)
-
-async function refreshCartCount() {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (!token) { cartCount.value = 0; return }
-  try {
-    const res = await getCartCount()
-    cartCount.value = Number(res?.data?.count ?? 0) || 0
-  } catch { /* 静默：角标失败不影响主流程 */ }
-}
-
-function onCartAdd() {
-  cartCount.value += 1
-}
-
-function onCartCount(e) {
-  if (typeof e.detail === 'number') cartCount.value = e.detail
-  else refreshCartCount()
-}
+// 购物车角标已由 AppNavbar 统一持有（useCartStore 是唯一数据源），
+// 本页不再展示也不订阅，避免同一份状态有两个持有者。
 
 const showSearch = ref(false)
 const searchKeyword = ref('')
@@ -432,7 +322,6 @@ const allProducts = ref([])
 const searchInput = ref(null)
 const showActivityModal = ref(false)
 const currentActivity = ref({})
-const user = ref(JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{"role": 0}'))
 
 function go(path) { router.push(path) }
 
@@ -615,23 +504,6 @@ async function loadDashboard() {
   }
 }
 
-async function handleLogout() {
-  try {
-    await logout()
-  } catch {
-    console.log('Logout API call completed')
-  }
-  // 轮询由 App.vue 的 useMessageNotify 统一负责，登出后其 poll 因无 token
-  // 自动跳过请求；这里只需清掉徽标
-  notificationStore.resetUnreadCount()
-  // 清空身份缓存，避免上一位用户的 role 残留在内存里
-  userStore.reset()
-  localStorage.removeItem('token')
-  localStorage.removeItem('username')
-  sessionStorage.removeItem('justLoggedIn')
-  router.push('/login')
-}
-
 const cards = ref([
   { title: '待售商品', value: 0, icon: 'shopping', color: '#ff7a45' },
   { title: '待处理订单', value: 0, icon: 'order', color: '#36b37e' },
@@ -690,21 +562,11 @@ const activities = ref([
 ])
 
 onMounted(() => {
-  // 未读消息轮询统一由 App.vue 的 useMessageNotify 负责（10 秒一次），
-  // 它会通过 store.setUnreadCount 更新徽标。此处不再重复调用
-  // notificationStore.startPolling，否则同一接口会被轮询两次。
+  // 未读消息轮询与购物车数量均已收进 App.vue / AppNavbar 单一数据源，
+  // 此处不再自行拉取或监听——否则同一份状态会有两个持有者。
   loadSearchHistory()
   loadProducts()
   loadDashboard()
-  refreshCartCount()
-  // 商品详情页加购成功后派发这两个事件做角标即时反馈
-  window.addEventListener('cart:add', onCartAdd)
-  window.addEventListener('cart:count', onCartCount)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('cart:add', onCartAdd)
-  window.removeEventListener('cart:count', onCartCount)
 })
 
 function getDay(time) {
@@ -719,85 +581,9 @@ function getMonth(time) {
 
 <style scoped>
 /* ---------- 顶部导航 ---------- */
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--border);
-}
 
-.header-inner {
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text);
-  flex-shrink: 0;
-}
-.brand:hover { color: var(--text); }
-
-.brand-mark {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: #fff;
-}
 .brand-mark svg { width: 17px; height: 17px; }
 
-.brand-name {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
-}
-
-.main-nav {
-  display: flex;
-  gap: var(--space-1);
-  flex: 1;
-}
-
-.nav-link {
-  padding: 8px 12px;
-  font-size: var(--text-base);
-  color: var(--text-2);
-  border-radius: var(--radius-sm);
-  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-}
-.nav-link:hover { color: var(--text); background: var(--surface-3); }
-.nav-link.router-link-exact-active { color: var(--accent); font-weight: var(--weight-medium); }
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.icon-btn {
-  position: relative;
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text-2);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
 .icon-btn svg { width: 20px; height: 20px; }
 
 .notify-badge {
@@ -827,15 +613,6 @@ function getMonth(time) {
 }
 @media (prefers-reduced-motion: reduce) {
   .cart-icon--pulse .notify-badge { animation: none; }
-}
-.avatar {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  background: var(--surface-3);
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -1109,7 +886,6 @@ function getMonth(time) {
   .stat { text-align: left; }
 }
 @media (max-width: 720px) {
-  .main-nav { display: none; }
   .dashboard-row { grid-template-columns: repeat(2, 1fr); }
   .hero-title { font-size: var(--text-3xl); }
   .hero-stats { gap: var(--space-6); }

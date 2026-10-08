@@ -1,25 +1,6 @@
 <template>
   <div class="page cart-page">
-    <header class="site-header">
-      <div class="container header-inner">
-        <router-link to="/" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" />
-            </svg>
-          </span>
-          <span class="brand-name">校园二手</span>
-        </router-link>
-        <nav class="main-nav" aria-label="主导航">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/plaza" class="nav-link">大厅</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-          <router-link to="/profile" class="nav-link">我的</router-link>
-        </nav>
-      </div>
-    </header>
+    
 
     <main class="container cart-main">
       <div class="cart-title-row">
@@ -305,39 +286,7 @@ onMounted(loadCart)
 <style scoped>
 .cart-page { min-height: 100vh; background: var(--bg); }
 
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--border);
-}
 
-.header-inner {
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.brand { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text); flex-shrink: 0; }
-.brand:hover { color: var(--text); }
-.brand-mark {
-  width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-sm); background: var(--accent); color: #fff;
-}
-.brand-mark svg { width: 17px; height: 17px; }
-.brand-name { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: -0.01em; }
-
-.main-nav { display: flex; gap: var(--space-1); flex: 1; }
-.nav-link {
-  padding: 8px 12px; font-size: var(--text-base); color: var(--text-2);
-  border-radius: var(--radius-sm); text-decoration: none;
-  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-}
-.nav-link:hover { color: var(--text); background: var(--surface-3); }
-.nav-link.router-link-exact-active { color: var(--accent); font-weight: var(--weight-medium); }
 
 .cart-main { padding: var(--space-8) var(--space-6) var(--space-16); }
 

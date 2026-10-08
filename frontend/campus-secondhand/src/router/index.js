@@ -19,16 +19,20 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue'),
+    // 登录/注册/找回密码是沉浸式页面，不挂全站导航（无壁纸，暗导航会压浅底）
+    meta: { navbar: false }
   },
   {
     path: '/register',
     name: 'Register',
     component: () => import('../views/Register.vue'),
+    meta: { navbar: false }
   },
   {
     path: '/forgot',
     name: 'ResetPassword',
     component: () => import('../views/ResetPassword.vue'),
+    meta: { navbar: false }
   },
   {
     path: '/products',
@@ -95,7 +99,10 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('../views/NotFound.vue')
+    component: () => import('../views/NotFound.vue'),
+    // 404 无 requiresAuth → 无壁纸 → 页面是浅色 --bg。暗玻璃压浅底是反向割裂，
+    // 且 404 页惯例极简，保留自带的「回首页」按钮即可
+    meta: { navbar: false }
   },
   // 管理员路由
   {

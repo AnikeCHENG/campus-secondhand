@@ -6,17 +6,7 @@
     其他页面也完全不受影响——全局 theme.css 零字符改动。
   -->
   <div class="page plaza" data-plaza-dark>
-    <header class="plaza-header" :class="{ 'is-scrolled': headerScrolled }">
-      <div class="container plaza-header-inner">
-        <router-link to="/" class="brand">校园二手</router-link>
-        <nav class="plaza-nav" aria-label="主导航">
-          <router-link to="/" class="nav-link">首页</router-link>
-          <router-link to="/plaza" class="nav-link is-active">大厅</router-link>
-          <router-link to="/products" class="nav-link">商品</router-link>
-          <router-link to="/messages" class="nav-link">消息</router-link>
-        </nav>
-      </div>
-    </header>
+    
 
     <main class="plaza-shell">
       <aside class="plaza-left">
@@ -254,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PostCard from '../components/PostCard.vue'
@@ -602,29 +592,12 @@ async function onShare(post) {
   }
 }
 
-/**
- * 导航滚动状态：滚过 8px 给 header 加 is-scrolled。
- *
- * <p>用 scroll 监听而非 IntersectionObserver：header 是 sticky 元素，
- * 它的位置由布局决定而非进入视口，IO 在这里没有语义。8px 阈值避免
- * 页面刚开始轻微抖动就切换背景。</p>
- */
-const headerScrolled = ref(false)
-function onScroll() {
-  headerScrolled.value = window.scrollY > 8
-}
-
 onMounted(async () => {
-  onScroll()
-  window.addEventListener('scroll', onScroll, { passive: true })
   await loadTypes()
   // 右栏不 await：它失败也要先把主 feed 渲染出来
   loadSidebar()
   await Promise.all([loadProfile(), loadFeed()])
 })
-
-// 必须解绑：Plaza 挂了缓存的返回/前进会重新挂载，残留监听会累积
-onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <style scoped>
@@ -696,61 +669,24 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   border-color: rgba(45, 212, 191, 0.45);
 }
 
-.plaza-header {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(10, 16, 19, 0.55);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
-  transition: background var(--dur-slow) var(--ease),
-    box-shadow var(--dur-slow) var(--ease);
-}
+
 /* 滚动后加深并浮起：未滚动时半透明让壁纸多露一点，滚动后需要把下面的
    卡片内容压住，否则文字会与滑过的卡片叠在一起。 */
-.plaza-header.is-scrolled {
-  background: rgba(8, 13, 16, 0.82);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
-.plaza-header-inner {
-  position: relative;
-  display: flex; align-items: center; justify-content: space-between;
-  height: var(--header-h);
-}
+
+
 
 /* Logo 渐变字：background-clip:text 必须保留 color 兜底，
    不支持时文字是深色 --text 而非透明消失。 */
-.brand {
-  color: var(--text);
-  text-decoration: none;
-  font-weight: 700; font-size: var(--text-lg);
-  background: linear-gradient(135deg, #2dd4bf, #38bdf8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+
 
 /* 导航水平居中于整个 header（与首页间距对齐） */
-.plaza-nav {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  display: flex; gap: var(--space-1);
-}
-.nav-link {
-  position: relative;
-  padding: 8px 12px; font-size: var(--text-base);
-  border-radius: var(--radius-sm); color: var(--text-2);
-  text-decoration: none; white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease);
-}
-.nav-link:hover { color: var(--text); }
+
+
+
 /* 当前项渐变下划线：用 ::after 而不是 border-bottom，
    border 会占掉盒模型高度导致按下时整行跳动。 */
-.nav-link.is-active { color: var(--text); font-weight: 600; }
-.nav-link.is-active::after {
-  content: "";
-  position: absolute; left: 12px; right: 12px; bottom: 2px;
-  height: 2px; border-radius: var(--radius-full);
-  background: linear-gradient(90deg, #2dd4bf, #38bdf8);
-}
+
+
 
 .plaza-shell {
   max-width: 1440px; margin: 0 auto;
@@ -1081,12 +1017,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   .plaza-left, .plaza-right { position: static; }
 }
 @media (max-width: 768px) {
-  .plaza-nav {
-    position: static; transform: none;
-    flex: 1; justify-content: flex-end;
-    overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
-  }
-  .plaza-nav::-webkit-scrollbar { display: none; }
+
+
 }
 /* =========================================================
    降级为静态等价物，而非冻住动画
@@ -1125,8 +1057,5 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   .plaza-filter button,
   .active-user,
   .topic-item { transition: none; }
-
-  .plaza-nav,
-  .plaza-header { transition: none; }
 }
 </style>
