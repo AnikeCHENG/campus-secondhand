@@ -715,7 +715,14 @@ onMounted(async () => {
 .topic-item em { font-style: normal; color: var(--text-3); font-size: var(--text-xs); }
 
 .feed-skeleton { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
-.sk { background: var(--surface-3); border-radius: var(--radius-sm); animation: sk-pulse 1.4s ease-in-out infinite; }
+.sk {
+  background: var(--surface-3); border-radius: var(--radius-sm);
+  animation: sk-pulse 1.4s ease-in-out infinite;
+  /* reduced-motion 下的静态等价物：固定的中间灰阶。
+     不用 animation:none —— 那会让它停在 opacity:1 的高亮态，
+     看起来像内容已加载，与真实加载态不符。 */
+  --sk-rest-opacity: 0.7;
+}
 .sk-row { height: 36px; }
 .sk-line { height: 14px; }
 .sk-line--short { width: 40%; }
@@ -743,8 +750,20 @@ onMounted(async () => {
   }
   .plaza-nav::-webkit-scrollbar { display: none; }
 }
+/* 降级为静态等价物，而非冻住动画：
+   骨架屏在 reduced-motion 下改为固定灰阶块（仍有"这是占位"的视觉暗示），
+   保留 transition 关闭但不移除元素的状态暗示。
+
+   注意：.feed-card 的 hover 降级规则在 PostCard.vue 里，不在这里——
+   卡片已经抽成子组件，scoped 属性不同，这里写就匹配不到了。 */
 @media (prefers-reduced-motion: reduce) {
-  .sk { animation: none; }
-  .feed-card:hover { transform: none; }
+  .sk {
+    animation: none;
+    opacity: var(--sk-rest-opacity, 0.7);
+  }
+  .plaza-nav,
+  .plaza-post-btn {
+    transition: none;
+  }
 }
 </style>

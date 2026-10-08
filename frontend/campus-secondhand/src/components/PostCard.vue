@@ -240,4 +240,14 @@ const isProductPost = computed(() => !!props.post.productId)
   background: var(--surface); color: var(--text);
 }
 .comment-input button { font-size: var(--text-xs); padding: 6px 14px; }
+
+/* 降级为静态等价物：去掉位移，但保留阴影——阴影变化不依赖运动，
+   仍能传达"这张卡片被指向了"。这条必须写在 PostCard 里：
+   父组件的 scoped 属性匹配不到子组件渲染出的 .feed-card。 */
+@media (prefers-reduced-motion: reduce) {
+  .feed-card:hover {
+    transform: none;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .28);
+  }
+}
 </style>

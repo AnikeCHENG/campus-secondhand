@@ -1,0 +1,39 @@
+/* ============================================================================
+ * v-reveal 指令配套样式
+ *
+ * 放在全局而非 scoped：指令加的 class 落在使用者的元素上，
+ * 组件的 scoped 属性选择器匹配不到它。
+ *
+ * transition 定义在这里，指令只负责切 class —— 这样 JS 里没有硬编码的
+ * 时长/曲线，改手感只改这一处。
+ * ==========================================================================*/
+
+.v-reveal-pending {
+  opacity: 0;
+  transform: translateY(var(--reveal-distance, 16px));
+  will-change: opacity, transform;
+}
+
+.v-reveal-shown {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.55s var(--ease),
+    transform 0.55s var(--ease);
+  /* 动画结束后不再占用合成层，避免长列表累积图层导致滚动掉帧 */
+  will-change: auto;
+}
+
+/* 降级不是「冻住动画」，而是「换成静态等价物」：
+   隐藏态本来靠 opacity+位移制造入场感，减弱动效时元素直接以终态呈现。
+   指令在 reduced-motion 下根本不会加 pending 类，这里是兜底，
+   防止样式在指令加载失败时把内容永久藏起来。 */
+@media (prefers-reduced-motion: reduce) {
+  .v-reveal-pending {
+    opacity: 1;
+    transform: none;
+  }
+  .v-reveal-shown {
+    transition: none;
+  }
+}
