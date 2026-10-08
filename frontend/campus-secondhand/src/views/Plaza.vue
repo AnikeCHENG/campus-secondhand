@@ -1,6 +1,12 @@
 <template>
-  <div class="page plaza">
-    <header class="plaza-header">
+  <!--
+    data-plaza-dark 是暗色玻璃的隔离舱：
+    它只重定义 CSS 自定义属性，靠变量沿 DOM 树继承流入所有子组件
+    （含 PostCard），因此组件内部 CSS 一行都不用改，Home/Products 等
+    其他页面也完全不受影响——全局 theme.css 零字符改动。
+  -->
+  <div class="page plaza" data-plaza-dark>
+    <header class="plaza-header" :class="{ 'is-scrolled': headerScrolled }">
       <div class="container plaza-header-inner">
         <router-link to="/" class="brand">校园二手</router-link>
         <nav class="plaza-nav" aria-label="主导航">
@@ -15,7 +21,7 @@
     <main class="plaza-shell">
       <aside class="plaza-left">
         <!-- 用户名片：字段取不到就隐藏对应区域，不显示占位文案 -->
-        <section class="card plaza-user">
+        <section class="glass plaza-user">
           <div class="avatar avatar-lg avatar-ring">
             <img v-if="profile?.avatar" :src="profile.avatar" :alt="`${profile.nickname} 的头像`" />
             <template v-else>{{ (profile?.nickname || '?').charAt(0) }}</template>
@@ -42,7 +48,7 @@
           <span>+ 发布动态/商品</span>
         </button>
 
-        <section class="card plaza-filter">
+        <section class="glass plaza-filter">
           <h3>分类筛选</h3>
           <button
             v-for="item in filters"
@@ -58,7 +64,7 @@
 
       <section class="plaza-feed">
         <!-- 发布器 -->
-        <div v-if="composerOpen" class="card feed-composer">
+        <div v-if="composerOpen" class="glass feed-composer">
           <div class="composer-types">
             <button
               v-for="t in typeOptions"
@@ -118,25 +124,25 @@
             </button>
           </div>
         </div>
-        <div v-else class="card feed-composer">
+        <div v-else class="glass feed-composer">
           <button type="button" @click="openComposer">分享动态、发起求购，或把闲置挂上大厅…</button>
         </div>
 
         <!-- 加载失败 -->
-        <div v-if="feedError" class="card feed-state">
+        <div v-if="feedError" class="glass feed-state">
           <p>{{ feedError }}</p>
           <button type="button" @click="loadFeed">重试</button>
         </div>
 
         <!-- 骨架屏 -->
-        <div v-else-if="loading" class="card feed-skeleton">
+        <div v-else-if="loading" class="glass feed-skeleton">
           <div class="sk sk-row"></div>
           <div class="sk sk-line"></div>
           <div class="sk sk-line sk-line--short"></div>
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="posts.length === 0" class="card feed-state">
+        <div v-else-if="posts.length === 0" class="glass feed-state">
           <p>{{ activeFilter === 'all' ? '大厅还没有动态，来发第一条吧' : '该分类下暂无动态' }}</p>
           <button type="button" @click="activeFilter = 'all'; loadFeed()">查看全部动态</button>
         </div>
@@ -146,9 +152,16 @@
           v-reveal 做滚动入场 stagger：delay 按索引递增 80ms，
           超过 5 张后封顶，否则长列表末尾要等近 1 秒才出现。
         -->
+        <!--
+          class="glass" 走 Vue 3 的 class fallthrough：
+          PostCard 是单根节点且未设 inheritAttrs:false，父级传入的 class
+          会自动合并到其根元素。PostCard 内部 CSS 零改动，别处复用时
+          各自传自己的表面类即可。
+        -->
         <PostCard
           v-for="(post, i) in posts"
           :key="post.id"
+          class="glass"
           v-reveal="{ delay: Math.min(i, 5) * 80 }"
           :post="post"
           :is-expanded="!!expanded[post.id]"
@@ -173,7 +186,7 @@
       </section>
 
       <aside class="plaza-right">
-        <section class="card">
+        <section class="glass">
           <h3>热门话题</h3>
           <div v-if="hotTopicsLoading" class="side-skeleton">
             <span class="sk sk-line"></span>
@@ -203,7 +216,7 @@
           </ol>
         </section>
 
-        <section class="card">
+        <section class="glass">
           <h3>活跃用户</h3>
           <div v-if="activeUsersLoading" class="side-skeleton">
             <span class="sk sk-line"></span>
@@ -229,7 +242,7 @@
           </ul>
         </section>
 
-        <section class="card">
+        <section class="glass">
           <h3>平台公告</h3>
           <p class="announcement">本周开启“毕业季清仓”主题陈列，欢迎学生上架低价闲置。</p>
         </section>
@@ -241,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PostCard from '../components/PostCard.vue'
@@ -589,29 +602,132 @@ async function onShare(post) {
   }
 }
 
+/**
+ * 导航滚动状态：滚过 8px 给 header 加 is-scrolled。
+ *
+ * <p>用 scroll 监听而非 IntersectionObserver：header 是 sticky 元素，
+ * 它的位置由布局决定而非进入视口，IO 在这里没有语义。8px 阈值避免
+ * 页面刚开始轻微抖动就切换背景。</p>
+ */
+const headerScrolled = ref(false)
+function onScroll() {
+  headerScrolled.value = window.scrollY > 8
+}
+
 onMounted(async () => {
+  onScroll()
+  window.addEventListener('scroll', onScroll, { passive: true })
   await loadTypes()
   // 右栏不 await：它失败也要先把主 feed 渲染出来
   loadSidebar()
   await Promise.all([loadProfile(), loadFeed()])
 })
+
+// 必须解绑：Plaza 挂了缓存的返回/前进会重新挂载，残留监听会累积
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <style scoped>
-.plaza { background: var(--bg); min-height: 100vh; }
+/* ============================================================================
+ * 暗色玻璃隔离舱
+ *
+ * 只重定义自定义属性，不写任何组件样式规则。原因：Vue 的 scoped 会给组件
+ * 根元素打上各自组件的 data-v 属性，写在 Plaza 的 <style> 里的
+ * [data-plaza-dark] .feed-card 匹配不到 PostCard 内部的元素。
+ * 而自定义属性沿 DOM 树继承、不受 scoped 影响，能自然流到所有子组件。
+ *
+ * 这是「不改一行组件内部 CSS 就能整体换肤」的唯一可靠做法。
+ * ==========================================================================*/
+[data-plaza-dark] {
+  /* 背景保持透明：让 WallpaperBackground 的星空/灯笼透出来，
+     .glass 的 blur(18px) 才有真实内容可模糊。
+     theme.css 的 body.has-wallpaper 已经把 --bg 设为 transparent，
+     这里显式重申是为了不依赖那层间接。 */
+  --bg: transparent;
+  --bg-subtle: transparent;
+
+  /* 深色底上的三级表面：不再是白，而是白色低透明叠加。
+     数值比 --bg 更克制，因为背后已经有壁纸，再叠白会发灰。 */
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.04);
+  --surface-3: rgba(255, 255, 255, 0.03);
+
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* 三级文字：主 0.92 / 次 0.60 / 弱 0.38。
+     0.38 是「弱提示」的下限——用在时间戳、计数这类可略过的信息上。
+     需要读正文时用 0.92，正文实测对比度见下方 .plaza 的 background 叠加层。 */
+  --text: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.60);
+  --text-3: rgba(255, 255, 255, 0.38);
+
+  /* 深绿 #0b6e54 在深色底上几乎看不见（对比度约 1.4:1）。
+     换成同色系提亮的青绿，与 --grad-brand 的 #10b981/#2dd4bf 同一家族。 */
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-active: #14b8a6;
+  --accent-soft: rgba(45, 212, 191, 0.14);
+  --accent-soft-strong: rgba(45, 212, 191, 0.22);
+}
+
+.plaza {
+  background: var(--bg);
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * .feed-card 的边框修正
+ *
+ * PostCard.vue 的 .feed-card 写了 border: 1px solid transparent —— 那是它在
+ * 浅色主题下的「预留位」（hover 时换成绿色）。加上 class="glass" 后，两个类
+ * 都命中同一条 border，且 .feed-card 的作用域属性使其后注入，transparant
+ * 赢了 .glass 的 rgba(255,255,255,.08) → 玻璃的细白边整个消失。
+ *
+ * 这里把玻璃边框重新提回来，同时保留 hover 的绿色提亮：
+ * 不改 PostCard 一行代码，由外层覆写。
+ * -------------------------------------------------------------------------*/
+.plaza-shell :deep(.feed-card) {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.plaza-shell :deep(.feed-card:hover) {
+  border-color: rgba(45, 212, 191, 0.45);
+}
 
 .plaza-header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(15, 15, 16, 0.72);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(16px) saturate(160%);
+  background: rgba(10, 16, 19, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  transition: background var(--dur-slow) var(--ease),
+    box-shadow var(--dur-slow) var(--ease);
+}
+/* 滚动后加深并浮起：未滚动时半透明让壁纸多露一点，滚动后需要把下面的
+   卡片内容压住，否则文字会与滑过的卡片叠在一起。 */
+.plaza-header.is-scrolled {
+  background: rgba(8, 13, 16, 0.82);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 .plaza-header-inner {
   position: relative;
   display: flex; align-items: center; justify-content: space-between;
   height: var(--header-h);
 }
-.brand { color: var(--text); text-decoration: none; font-weight: 700; }
+
+/* Logo 渐变字：background-clip:text 必须保留 color 兜底，
+   不支持时文字是深色 --text 而非透明消失。 */
+.brand {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700; font-size: var(--text-lg);
+  background: linear-gradient(135deg, #2dd4bf, #38bdf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
 /* 导航水平居中于整个 header（与首页间距对齐） */
 .plaza-nav {
@@ -619,13 +735,22 @@ onMounted(async () => {
   display: flex; gap: var(--space-1);
 }
 .nav-link {
+  position: relative;
   padding: 8px 12px; font-size: var(--text-base);
   border-radius: var(--radius-sm); color: var(--text-2);
   text-decoration: none; white-space: nowrap;
   transition: color var(--dur-fast) var(--ease);
 }
 .nav-link:hover { color: var(--text); }
+/* 当前项渐变下划线：用 ::after 而不是 border-bottom，
+   border 会占掉盒模型高度导致按下时整行跳动。 */
 .nav-link.is-active { color: var(--text); font-weight: 600; }
+.nav-link.is-active::after {
+  content: "";
+  position: absolute; left: 12px; right: 12px; bottom: 2px;
+  height: 2px; border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #2dd4bf, #38bdf8);
+}
 
 .plaza-shell {
   max-width: 1440px; margin: 0 auto;
@@ -724,11 +849,24 @@ onMounted(async () => {
   to { transform: translateX(100%); }
 }
 
-/* 分类筛选：选中项渐变胶囊 + 光晕；未选中 hover 平移 */
-.plaza-filter button:hover { transform: translateX(3px); }
+/* 分类筛选：选中项渐变胶囊 + 光晕；未选中=幽灵描边，hover 平移 */
+.plaza-filter button {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--text-2);
+}
+.plaza-filter button:hover {
+  transform: translateX(3px);
+  border-color: rgba(45, 212, 191, 0.45);
+  color: var(--text);
+  background: rgba(45, 212, 191, 0.08);
+}
 .plaza-filter button.active {
-  background: var(--grad-brand); border-color: transparent; color: #fff;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: var(--grad-brand);
+  border-color: transparent;
+  color: #04211d;
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 4px 14px rgba(45, 212, 191, 0.32);
 }
 .plaza-filter button.active:hover { transform: translateX(3px); }
 
@@ -740,12 +878,27 @@ onMounted(async () => {
 .composer-types button { padding: 4px 12px; font-size: var(--text-xs); }
 .composer-types button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
+/* 输入框：内层暗玻璃 —— 比 .glass 更暗一档且不 blur。
+   输入区需要「凹进去」的暗示：外层卡片是浮起的玻璃，输入框若是同样材质会
+   失去层级差。这里用 surface-2 叠加一层内阴影，视觉上比背景深。 */
 .composer-textarea {
   width: 100%; padding: var(--space-3); font-size: var(--text-sm); font-family: inherit;
-  border: 1px solid var(--border-strong); border-radius: var(--radius);
-  background: var(--surface); color: var(--text); resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.22); color: var(--text); resize: vertical;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.composer-textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.composer-textarea::placeholder { color: var(--text-3); }
+/* 聚焦：渐变描边 + 光晕。用 border-color 渐变需要 border-image，
+   但 border-image 会圆角失效，所以这里用两层 box-shadow 模拟渐变描边。 */
+.composer-textarea:focus {
+  outline: none;
+  border-color: rgba(45, 212, 191, 0.6);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 3px rgba(45, 212, 191, 0.16),
+    0 0 12px rgba(45, 212, 191, 0.2);
+}
 
 .composer-images { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
 .uploaded-image { position: relative; width: 96px; height: 96px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
@@ -765,10 +918,20 @@ onMounted(async () => {
 .cp-field em { color: var(--danger); font-style: normal; }
 .cp-field input {
   padding: 8px 12px; font-size: var(--text-sm);
-  border: 1px solid var(--border-strong); border-radius: var(--radius);
-  background: var(--surface); color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.22); color: var(--text);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.cp-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cp-field input::placeholder { color: var(--text-3); }
+.cp-field input:focus {
+  outline: none;
+  border-color: rgba(45, 212, 191, 0.6);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 3px rgba(45, 212, 191, 0.16),
+    0 0 12px rgba(45, 212, 191, 0.2);
+}
 
 .composer-error { margin: var(--space-2) 0 0; font-size: var(--text-xs); color: var(--danger); }
 .composer-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
@@ -804,12 +967,22 @@ onMounted(async () => {
   margin: 0; font-size: var(--text-xs); color: var(--text-3);
   display: flex; align-items: center; gap: var(--space-2);
 }
+/* 幽灵按钮：透明底 + 细描边，hover 才浮现填充与光晕。
+   降级态也要降得好看——这是右栏接口未就绪时用户唯一能点的出口，
+   做成实心按钮会让「出错」看起来像「成功」。 */
 .side-retry {
   padding: 2px 10px; font-size: var(--text-xs);
-  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: var(--radius-full);
   background: transparent; color: var(--text-2); cursor: pointer;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease),
+    background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.side-retry:hover { border-color: var(--accent); color: var(--accent); }
+.side-retry:hover {
+  border-color: rgba(45, 212, 191, 0.55);
+  color: var(--accent);
+  background: rgba(45, 212, 191, 0.1);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.22);
+}
 
 /* 热门话题：Top3 用渐变大字序号，其余用小号中性序号。
    序号是排名的视觉权重，不是装饰——第 1 和第 6 必须一眼能分辨。 */
@@ -820,7 +993,7 @@ onMounted(async () => {
   border-radius: var(--radius-sm);
   transition: background var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-.topic-item:hover { background: var(--surface-2); transform: translateX(3px); }
+.topic-item:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(3px); }
 
 .topic-rank {
   flex: none; width: 18px; text-align: center;
@@ -847,15 +1020,15 @@ onMounted(async () => {
 .active-user {
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-2); border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
     border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .active-user:hover {
   transform: translateY(-3px);
-  border-color: rgba(16, 185, 129, 0.35);
-  background: var(--surface-2);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
+  border-color: rgba(45, 212, 191, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 20px rgba(45, 212, 191, 0.14);
 }
 .au-body { display: grid; min-width: 0; }
 .au-body b {
@@ -869,14 +1042,16 @@ onMounted(async () => {
 .feed-skeleton { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 .sk {
   position: relative; overflow: hidden;
-  background: var(--surface-3); border-radius: var(--radius-sm);
+  /* 暗色下的骨架块要比浅色时更亮一点，否则在深色玻璃上完全看不见 */
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
   --sk-rest-opacity: 0.7;
 }
 .sk::after {
   content: "";
   position: absolute; inset: 0;
   background: var(--grad-sheen);
-  opacity: 0.6;
+  opacity: 0.35;
   transform: translateX(-100%);
   animation: shimmer 1.4s ease-in-out infinite;
 }
@@ -891,7 +1066,10 @@ onMounted(async () => {
 .plaza-toast {
   position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
   z-index: 1000; padding: 10px 20px; border-radius: var(--radius);
-  background: rgba(20,20,18,.9); color: #fff; font-size: var(--text-sm);
+  background: rgba(10, 16, 19, 0.9); color: var(--text); font-size: var(--text-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 @media (max-width: 1100px) {
@@ -926,17 +1104,29 @@ onMounted(async () => {
   .sk::after { animation: none; opacity: 0; }
   .sk { opacity: var(--sk-rest-opacity, 0.7); }
 
-  /* 光环：只停旋转，渐变背景保留 */
+  /* 光环：只停旋转，渐变背景保留 —— 这就是静态等价物 */
   .avatar-ring::before { animation: none; }
 
-  /* hover 位移去掉，阴影与边框变化保留（不依赖运动） */
+  /* 上浮全部取消，改为「仅边框提亮」：
+     边框变化不依赖运动，仍能告诉用户「指向了这一项」。 */
   .plaza-post-btn:hover { transform: none; }
   .plaza-post-btn::after { animation: none; opacity: 0; }
   .plaza-filter button:hover,
   .plaza-filter button.active:hover,
-  .topic-item:hover,
-  .active-user:hover { transform: none; }
+  .topic-item:hover { transform: none; }
+  .active-user:hover {
+    transform: none;
+    border-color: rgba(45, 212, 191, 0.4);
+    box-shadow: none;
+  }
+  /* 幽灵按钮 hover 只换填充与描边，不做位移，故 transition 本身也要关 */
+  .side-retry:hover { transform: none; }
+  .side-retry,
+  .plaza-filter button,
+  .active-user,
+  .topic-item { transition: none; }
 
-  .plaza-nav { transition: none; }
+  .plaza-nav,
+  .plaza-header { transition: none; }
 }
 </style>

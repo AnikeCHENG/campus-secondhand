@@ -7,6 +7,9 @@ import { reveal } from './directives/reveal'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './assets/theme.css'
+// glass.css 必须紧跟 theme.css：.glass 与 .card 特异性相同，
+// 靠源码顺序决胜。放到 auth.css 之后也能工作，但语义上它属于基础表面层。
+import './assets/glass.css'
 import './assets/auth.css'
 import './assets/reveal.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
