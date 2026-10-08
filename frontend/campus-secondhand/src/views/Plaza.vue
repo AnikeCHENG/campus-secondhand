@@ -134,89 +134,26 @@
           <button type="button" @click="activeFilter = 'all'; loadFeed()">查看全部动态</button>
         </div>
 
-        <article v-for="post in posts" :key="post.id" class="card feed-card">
-          <header class="feed-head">
-            <div class="avatar">
-              <img v-if="post.author?.avatar" :src="post.author.avatar" :alt="`${post.author.username} 的头像`" />
-              <template v-else>{{ (post.author?.username || '?').charAt(0) }}</template>
-            </div>
-            <div class="feed-meta">
-              <b>{{ post.author?.username }}</b>
-              <span>
-                {{ formatTime(post.createdTime) }}
-                <template v-if="post.author?.location"> · {{ post.author.location }}</template>
-              </span>
-            </div>
-            <em class="badge" :data-type="post.type">{{ typeIcon(post.type) }} {{ post.typeLabel }}</em>
-          </header>
-
-          <p class="feed-content" :class="{ expanded: expanded[post.id] }">{{ post.content }}</p>
-          <button
-            v-if="post.content.length > 80"
-            class="expand-btn"
-            type="button"
-            @click="expanded[post.id] = !expanded[post.id]"
-          >
-            {{ expanded[post.id] ? '收起' : '展开全文' }}
-          </button>
-
-          <div v-if="post.tagList?.length" class="tags">
-            <span v-for="tag in post.tagList" :key="tag">#{{ tag }}</span>
-          </div>
-
-          <div v-if="post.imageList?.length" class="feed-images" :class="imageGridClass(post.imageList.length)">
-            <div v-for="(img, i) in post.imageList.slice(0, 9)" :key="i" class="image-item">
-              <img :src="img" alt="动态图片" />
-              <span>查看详情</span>
-            </div>
-          </div>
-
-          <!-- 商品卡片：仅 productId 非空时有值 -->
-          <router-link
-            v-if="post.product"
-            :to="`/products/${post.product.id}`"
-            class="feed-product"
-          >
-            <span class="fp-title">{{ post.product.title }}</span>
-            <span class="fp-price">¥{{ post.product.price }}</span>
-            <span class="fp-status">{{ productStatusText(post.product.status) }}</span>
-          </router-link>
-
-          <div v-else-if="post.type === 'SEEK'" class="price-row">求带价</div>
-
-          <!--
-            互动按钮：仅商品类动态显示。
-            现有互动接口挂在 /api/products 下，且 like_record/comments 表没有
-            target_type 列，post 与 product 的 ID 会碰撞，故非商品类动态不提供互动入口。
-          -->
-          <footer v-if="post.productId" class="feed-actions">
-            <button type="button" :class="{ 'like-pop': likeAnimating[post.id] }" @click="onLike(post)">
-              {{ likedMap[post.id] ? '❤️' : '🤍' }} 点赞 {{ post.likeCount ?? 0 }}
-            </button>
-            <button type="button" @click="toggleComments(post)">
-              💬 评论 {{ post.commentCount ?? 0 }}
-            </button>
-            <button type="button" @click="onShare(post)">✉️ 转发 {{ post.shareCount ?? 0 }}</button>
-          </footer>
-
-          <section v-if="activeCommentId === post.id" class="comment-area">
-            <div v-if="commentLoadingMap[post.id]" class="comment-loading">加载评论…</div>
-            <div v-for="comment in commentMap[post.id] || []" :key="comment.id" class="comment-item">
-              <b>{{ comment.username || comment.userId }}</b>
-              <span>{{ comment.content }}</span>
-              <small>{{ formatTime(comment.createdTime) }}</small>
-            </div>
-            <div class="comment-input">
-              <input
-                v-model="commentDrafts[post.id]"
-                type="text"
-                placeholder="写下你的评论…"
-                @keyup.enter="submitComment(post)"
-              />
-              <button type="button" @click="submitComment(post)">发送</button>
-            </div>
-          </section>
-        </article>
+        <!--
+          卡片拆成 PostCard：父组件持有全部 Map，v-for 时查出派生状态传入。
+          这样卡片内部不感知全局状态，阶段 4 的动效作用域局限在单卡内。
+        -->
+        <PostCard
+          v-for="post in posts"
+          :key="post.id"
+          :post="post"
+          :is-expanded="!!expanded[post.id]"
+          :is-liked="!!likedMap[post.id]"
+          :is-like-animating="!!likeAnimating[post.id]"
+          :is-comments-visible="activeCommentId === post.id"
+          :comments="commentMap[post.id] || []"
+          :is-comment-loading="!!commentLoadingMap[post.id]"
+          @toggle-expand="expanded[post.id] = !expanded[post.id]"
+          @like="onLike(post)"
+          @toggle-comments="toggleComments(post)"
+          @submit-comment="submitComment(post)"
+          @share="onShare(post)"
+        />
 
         <!-- 分页 -->
         <div v-if="!loading && !feedError && total > 0" class="feed-pager">
@@ -286,6 +223,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import PostCard from '../components/PostCard.vue'
 import VerifiedBadge from '../components/VerifiedBadge.vue'
 import { getHallProfile, getPosts, getPostTypes, createPost, getHotTopics, getActiveUsers } from '../api/plaza'
 import { toggleLike, getComments, addComment, shareProduct } from '../api/product'
@@ -307,7 +245,6 @@ const likedMap = ref({})
 const likeAnimating = ref({})
 const activeCommentId = ref(null)
 const commentMap = ref({})
-const commentDrafts = ref({})
 const commentLoadingMap = ref({})
 const composerOpen = ref(false)
 const submitting = ref(false)
@@ -339,8 +276,6 @@ const FALLBACK_TYPES = [
   { value: 'CHAT', label: '闲聊' },
 ]
 
-const TYPE_ICONS = { SELL: '🔴', SEEK: '🔵', FREE: '🟢', WARN: '🟡', CHAT: '⚪' }
-
 const filters = computed(() => [{ value: 'all', label: '全部' }, ...typeOptions.value])
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -354,28 +289,11 @@ const composerPlaceholder = computed(() => {
   }
 })
 
-function typeIcon(type) { return TYPE_ICONS[type] || '⚪' }
-
-function productStatusText(status) {
-  if (status === 1) return '在售'
-  if (status === 2) return '已售出'
-  if (status === 0) return '已下架'
-  return ''
-}
-
-function imageGridClass(count) {
-  if (count === 1) return 'grid-1'
-  if (count <= 4) return 'grid-2'
-  return 'grid-3'
-}
-
+/** 上传图片在浏览器端压到 800px / JPEG 0.7 再入库，避免 base64 把 posts.images 撑爆 */
 function handleImageUpload(event) {
-  const files = event.target.files ? Array.from(event.target.files) : []
+  const files = Array.from(event.target.files || [])
   if (!files.length) return
-  if (draft.images.length + files.length > 9) {
-    alert('最多只能上传 9 张图片')
-    return
-  }
+
   files.forEach(file => {
     if (!file.type.startsWith('image/')) return
     const reader = new FileReader()
@@ -414,10 +332,6 @@ function showToast(message) {
   toastTimer = setTimeout(() => { toast.value = '' }, 1800)
 }
 
-function formatTime(value) {
-  if (!value) return ''
-  return String(value).replace('T', ' ').slice(0, 16)
-}
 
 /* ---------- 数据加载 ---------- */
 async function loadProfile() {
@@ -603,15 +517,20 @@ async function toggleComments(post) {
   }
 }
 
-async function submitComment(post) {
-  const content = (commentDrafts.value[post.id] || '').trim()
+/**
+ * 提交评论。draft 由卡片内部持有并随事件回传。
+ *
+ * <p>成功后不主动清空：卡片内的草稿随评论列表渲染完成而重置，
+ * 父组件这里只负责把评论塞进 Map。</p>
+ */
+async function submitComment(post, draft) {
+  const content = (draft || '').trim()
   if (!content) return
   try {
     const res = await addComment(post.productId, content)
     if (!commentMap.value[post.id]) commentMap.value[post.id] = []
     commentMap.value[post.id].push(res.data)
     post.commentCount += 1
-    commentDrafts.value[post.id] = ''
   } catch {
     showToast('评论失败')
   }
@@ -752,69 +671,6 @@ onMounted(async () => {
 .cp-submit:hover:not(:disabled) { background: var(--accent-hover); }
 .cp-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.feed-card { padding: 16px; transition: transform .3s cubic-bezier(.25,.8,.25,1), box-shadow .3s ease; }
-.feed-card:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-.feed-head { display: flex; align-items: center; gap: 12px; }
-.feed-meta { display: grid; }
-.feed-meta b { font-size: var(--text-sm); color: var(--text); }
-.feed-meta span { font-size: var(--text-xs); }
-
-.badge { margin-left: auto; font-size: var(--text-xs); padding: 3px 10px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-2); font-style: normal; }
-
-.feed-content {
-  margin: var(--space-3) 0 0; color: var(--text);
-  line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical; overflow: hidden;
-}
-.feed-content.expanded { display: block; }
-.expand-btn { margin-top: var(--space-2); font-size: var(--text-xs); padding: 2px 0; border: none; background: none; color: var(--accent); }
-
-.tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-.tags span { font-size: var(--text-xs); color: var(--accent); }
-
-.feed-images { display: grid; gap: 8px; margin: 12px 0; }
-.image-item { position: relative; overflow: hidden; border-radius: var(--radius); background: var(--surface-3); }
-.image-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.image-item span {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.45); color: #fff; font-size: var(--text-sm);
-  opacity: 0; transition: opacity var(--dur) var(--ease);
-}
-.image-item:hover span { opacity: 1; }
-.feed-images.grid-1 .image-item { height: 320px; }
-.feed-images.grid-2 { grid-template-columns: repeat(2, 1fr); }
-.feed-images.grid-2 .image-item { aspect-ratio: 1 / 1; }
-.feed-images.grid-3 { grid-template-columns: repeat(3, 1fr); }
-.feed-images.grid-3 .image-item { aspect-ratio: 1 / 1; }
-
-.feed-product {
-  display: flex; align-items: center; gap: var(--space-3);
-  margin-top: var(--space-3); padding: var(--space-3);
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius); text-decoration: none;
-}
-.feed-product:hover { border-color: var(--accent); }
-.fp-title { flex: 1; font-size: var(--text-sm); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fp-price { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--accent); }
-.fp-status { font-size: var(--text-xs); color: var(--text-3); }
-
-.price-row { margin-top: var(--space-3); font-size: var(--text-sm); color: var(--text-2); }
-
-.feed-actions { display: flex; gap: var(--space-4); margin-top: var(--space-4); }
-.feed-actions button { background: transparent; color: var(--text-2); padding: 0; border: none; font-size: var(--text-sm); }
-.feed-actions button:hover { color: var(--text); }
-
-.comment-area { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.comment-loading { font-size: var(--text-xs); color: var(--text-3); }
-.comment-item { display: flex; gap: var(--space-2); padding: 6px 0; font-size: var(--text-sm); }
-.comment-item small { color: var(--text-3); font-size: var(--text-xs); }
-.comment-input { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
-.comment-input input {
-  flex: 1; padding: 6px 12px; font-size: var(--text-sm);
-  border: 1px solid var(--border-strong); border-radius: var(--radius);
-  background: var(--surface); color: var(--text);
-}
-.comment-input button { font-size: var(--text-xs); padding: 6px 14px; }
 
 .feed-state {
   display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
