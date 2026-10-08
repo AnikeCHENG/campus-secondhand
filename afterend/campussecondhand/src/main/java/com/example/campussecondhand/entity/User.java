@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 
 @TableName("users")
@@ -17,6 +18,20 @@ public class User {
     @TableField("email")
     private String email;
 
+    /**
+     * BCrypt 哈希。
+     *
+     * <p>{@code @JsonProperty(access = WRITE_ONLY)} 而非 {@code @JsonIgnore}：
+     * 前者禁止「序列化出去」但保留「反序列化进来」，后者两个方向都禁。
+     * 这里两者都不需要，但 WRITE_ONLY 语义更准——万一将来有接口用 User
+     * 反序列化接收输入（比如资料更新），用 @JsonIgnore 会静默丢字段。</p>
+     *
+     * <p>为什么必须在实体上拦而不是在每个 Controller 拦：{@code /api/posts}
+     * 是公开接口，它把 User 整个塞进 author 字段返回。任何"逐个 Controller
+     * 检查"的做法都会在新增接口时漏掉——默认序列化整个实体的写法太顺手了。
+     * 在实体上设默认拒绝，是唯一能让漏写也安全的做法。</p>
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @TableField("password")
     private String password;
 
@@ -44,11 +59,20 @@ public class User {
     @TableField("is_student_verified")
     private Integer isStudentVerified = 0;
 
-    /** 学号；唯一索引保证一个学号只能对应一个账号，防止冒用他人身份骗取免手续费 */
+    /**
+     * 学号；唯一索引保证一个学号只能对应一个账号，防止冒用他人身份骗取免手续费。
+     *
+     * <p>WRITE_ONLY：学号 + 真实姓名是一对实名组合，能直接定位到具体学生。
+     * {@code /api/posts} 是公开接口且把整个 User 塞进 author 返回，
+     * 不拦的话等于任何人无需登录即可批量拿到全校用户的实名信息。
+     * 需要读学号的场景走 {@code /api/user/profile}（仅本人）或管理端接口。</p>
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @TableField("student_no")
     private String studentNo;
 
-    /** 真实姓名，仅认证时填写，不在公开接口中返回 */
+    /** 真实姓名，仅认证时填写。与学号同理由 WRITE_ONLY 保护。 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @TableField("real_name")
     private String realName;
 

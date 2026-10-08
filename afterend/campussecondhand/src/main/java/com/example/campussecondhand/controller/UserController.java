@@ -117,17 +117,22 @@ public class UserController {
             }
 
             User user = userOpt.get();
-            return ResponseEntity.ok(ApiResponse.success("获取成功", Map.of(
-                    "id", user.getId(),
-                    "username", user.getUsername(),
-                    "email", user.getEmail(),
-                    "phone", user.getPhone() != null ? user.getPhone() : "",
-                    "avatar", user.getAvatar() != null ? user.getAvatar() : "",
-                    "bio", user.getBio() != null ? user.getBio() : "",
-                    "location", user.getLocation() != null ? user.getLocation() : "",
-                    "qq", user.getQq() != null ? user.getQq() : "",
-                    "wechat", user.getWechat() != null ? user.getWechat() : ""
-            )));
+            // 学号与真实姓名在 User 上是 WRITE_ONLY，序列化时不会自动带出。
+            // 本接口是「本人查本人」，鉴权已保证不会越权，故显式补回这两个字段——
+            // 否则前端 Profile 的认证信息区永远显示「未认证」。
+            Map<String, Object> profile = new LinkedHashMap<>();
+            profile.put("id", user.getId());
+            profile.put("username", user.getUsername());
+            profile.put("email", user.getEmail());
+            profile.put("phone", user.getPhone() != null ? user.getPhone() : "");
+            profile.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+            profile.put("bio", user.getBio() != null ? user.getBio() : "");
+            profile.put("location", user.getLocation() != null ? user.getLocation() : "");
+            profile.put("qq", user.getQq() != null ? user.getQq() : "");
+            profile.put("wechat", user.getWechat() != null ? user.getWechat() : "");
+            profile.put("studentNo", user.getStudentNo() != null ? user.getStudentNo() : "");
+            profile.put("realName", user.getRealName() != null ? user.getRealName() : "");
+            return ResponseEntity.ok(ApiResponse.success("获取成功", profile));
         } catch (Exception e) {
             log.error("获取用户资料失败: ", e);
             return ResponseEntity.ok(ApiResponse.error(500, "获取资料失败"));
