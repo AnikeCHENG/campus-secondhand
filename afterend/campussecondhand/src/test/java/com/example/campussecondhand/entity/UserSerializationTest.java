@@ -17,12 +17,21 @@ class UserSerializationTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * 构造一个字段齐全的 User。
+     *
+     * <p>密码用占位串而非真实账号的 BCrypt 哈希：测试要验证的是「password
+     * 不出现在 JSON 里」，与哈希值本身无关。而真实哈希一旦提交进仓库，
+     * 等于把该账号的凭据公开——本项目 admin 用的还是弱口令，
+     * BCrypt_10 对常见密码抗性极低。占位串保留同样的格式特征，
+     * 足够让断言 hasSize/contains 等检查生效。</p>
+     */
     private User fullUser() {
         User u = new User();
         u.setId(1L);
         u.setUsername("admin");
         u.setEmail("admin@campus.com");
-        u.setPassword("$2a$10$9RADPkEYDzUqcm.xA/OkdezjPE4FMhlUXmqVSnNrzMRqtGpA6wIoC");
+        u.setPassword("$2a$10$TESTHASHnotARealCredentialAAAAAAAAAAAAAAAAAAAAAAA");
         u.setPhone("13800000000");
         u.setStudentNo("202012345678");
         u.setRealName("张三");
