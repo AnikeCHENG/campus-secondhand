@@ -59,3 +59,22 @@ export async function createPost(payload) {
     body: JSON.stringify(payload)
   })
 }
+
+/**
+ * 热门话题：{ topics: [{ tag, count }] }，后端已取 Top6。
+ *
+ * <p>公开接口（无需登录）。后端并行实现中，未就绪时按 404 处理——
+ * 调用方走空态，不要在前端造兜底假数据。</p>
+ */
+export async function getHotTopics() {
+  return await request('/plaza/hot-topics')
+}
+
+/**
+ * 活跃用户：{ users: [{ userId, username, avatar, subtitle }] }，后端已取 Top3。
+ *
+ * <p>公开接口（无需登录）。同 {@link getHotTopics}，未就绪时调用方走空态。</p>
+ */
+export async function getActiveUsers() {
+  return await request('/plaza/active-users')
+}

@@ -229,15 +229,45 @@
       <aside class="plaza-right">
         <section class="card">
           <h3>热门话题</h3>
-          <a v-for="topic in hotTopics" :key="topic" href="javascript:void 0">#{{ topic }}</a>
+          <div v-if="hotTopicsLoading" class="side-skeleton">
+            <span class="sk sk-line"></span>
+            <span class="sk sk-line"></span>
+            <span class="sk sk-line sk-line--short"></span>
+          </div>
+          <p v-else-if="hotTopicsError" class="side-hint">
+            {{ hotTopicsError }}
+            <button type="button" class="side-retry" @click="loadSidebar">重试</button>
+          </p>
+          <p v-else-if="hotTopics.length === 0" class="side-hint">还没有人用过话题标签</p>
+          <div v-else class="topic-list">
+            <span v-for="topic in hotTopics" :key="topic.tag" class="topic-item">
+              #{{ topic.tag }}
+              <em>{{ topic.count }}</em>
+            </span>
+          </div>
         </section>
 
         <section class="card">
           <h3>活跃用户</h3>
-          <div v-for="user in activeUsers" :key="user.name" class="active-user">
-            <div class="avatar">{{ user.name[0] }}</div>
-            <span>{{ user.name }}</span>
-            <small>{{ user.note }}</small>
+          <div v-if="activeUsersLoading" class="side-skeleton">
+            <span class="sk sk-line"></span>
+            <span class="sk sk-line"></span>
+            <span class="sk sk-line sk-line--short"></span>
+          </div>
+          <p v-else-if="activeUsersError" class="side-hint">
+            {{ activeUsersError }}
+            <button type="button" class="side-retry" @click="loadSidebar">重试</button>
+          </p>
+          <p v-else-if="activeUsers.length === 0" class="side-hint">暂无活跃用户</p>
+          <div v-else>
+            <div v-for="user in activeUsers" :key="user.userId" class="active-user">
+              <div class="avatar">
+                <img v-if="user.avatar" :src="user.avatar" :alt="`${user.username} 的头像`" />
+                <template v-else>{{ (user.username || '?').charAt(0) }}</template>
+              </div>
+              <span>{{ user.username }}</span>
+              <small>{{ user.subtitle }}</small>
+            </div>
           </div>
         </section>
 
@@ -257,7 +287,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import VerifiedBadge from '../components/VerifiedBadge.vue'
-import { getHallProfile, getPosts, getPostTypes, createPost } from '../api/plaza'
+import { getHallProfile, getPosts, getPostTypes, createPost, getHotTopics, getActiveUsers } from '../api/plaza'
 import { toggleLike, getComments, addComment, shareProduct } from '../api/product'
 
 const router = useRouter()
@@ -287,6 +317,18 @@ const toast = ref('')
 const expanded = ref({})
 
 let toastTimer = null
+
+/* ---------- 右栏：热门话题 / 活跃用户 ----------
+ *
+ * 这两个接口由后端并行实现，未就绪时按 404 处理。各自持有独立的
+ * loading/error 三态：右栏挂了不影响主 feed，也不向上冒泡。
+ */
+const hotTopics = ref([])
+const hotTopicsLoading = ref(true)
+const hotTopicsError = ref('')
+const activeUsers = ref([])
+const activeUsersLoading = ref(true)
+const activeUsersError = ref('')
 
 /** 后端枚举兜底；正常由 /posts/types 提供，取不到时用这一份静态文案 */
 const FALLBACK_TYPES = [
@@ -422,6 +464,38 @@ async function loadFeed() {
   }
 }
 
+/**
+ * 拉右栏两个公开接口。
+ *
+ * <p>用 allSettled 而非 all：这两个接口目前可能还没上线，若用 all 会在
+ * 任何一个失败时把另一个的成功结果一起丢掉，且 rejection 未处理直接冒泡。
+ * allSettled 让两者互不影响，各自进自己的 error 分支。</p>
+ */
+async function loadSidebar() {
+  const [topicsRes, usersRes] = await Promise.allSettled([
+    getHotTopics(),
+    getActiveUsers()
+  ])
+
+  if (topicsRes.status === 'fulfilled') {
+    hotTopics.value = topicsRes.value?.data?.topics || []
+    hotTopicsError.value = ''
+  } else {
+    hotTopics.value = []
+    hotTopicsError.value = '暂时无法加载热门话题'
+  }
+  hotTopicsLoading.value = false
+
+  if (usersRes.status === 'fulfilled') {
+    activeUsers.value = usersRes.value?.data?.users || []
+    activeUsersError.value = ''
+  } else {
+    activeUsers.value = []
+    activeUsersError.value = '暂时无法加载活跃用户'
+  }
+  activeUsersLoading.value = false
+}
+
 function setFilter(value) {
   activeFilter.value = value
   page.value = 1
@@ -555,6 +629,8 @@ async function onShare(post) {
 
 onMounted(async () => {
   await loadTypes()
+  // 右栏不 await：它失败也要先把主 feed 渲染出来
+  loadSidebar()
   await Promise.all([loadProfile(), loadFeed()])
 })
 </script>
@@ -757,6 +833,30 @@ onMounted(async () => {
   background: var(--surface); color: var(--text); cursor: pointer;
 }
 .feed-pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- 右栏 ---------- */
+.side-skeleton { display: flex; flex-direction: column; gap: var(--space-2); }
+/* 骨架块要撑满一行，否则宽度塌成 0 看不见 */
+.side-skeleton .sk-line { width: 100%; }
+.side-hint {
+  margin: 0; font-size: var(--text-xs); color: var(--text-3);
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.side-retry {
+  padding: 2px 10px; font-size: var(--text-xs);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); cursor: pointer;
+}
+.side-retry:hover { border-color: var(--accent); color: var(--accent); }
+
+.topic-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.topic-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; font-size: var(--text-xs); color: var(--text-2);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+.topic-item em { font-style: normal; color: var(--text-3); font-size: var(--text-xs); }
 
 .feed-skeleton { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 .sk { background: var(--surface-3); border-radius: var(--radius-sm); animation: sk-pulse 1.4s ease-in-out infinite; }
